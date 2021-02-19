@@ -9,6 +9,7 @@
   <body>
     <button id="reorder">Ändra ordning</button>
     <button id="steal">Stjäl</button>
+    <button id="insert">Ny</button>
     <div id="stolen" style="border: solid"></div>
     <script src="/elm.js"></script>
     <script>
@@ -31,6 +32,15 @@
         if (node !== stolen) {
           stolen.appendChild(node);
         }
+      };
+      insert.onclick = () => {
+        const node =
+          document.body.childNodes[
+            Math.floor(
+              Math.random() * Math.max(0, document.body.childNodes.length - 1)
+            )
+          ];
+        document.body.insertBefore(document.createElement("hr"), node);
       };
       HTMLFontElement.prototype.replaceData = function replaceData(
         _1,
