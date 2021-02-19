@@ -8,6 +8,8 @@
   </head>
   <body>
     <button id="reorder">Ändra ordning</button>
+    <button id="steal">Stjäl</button>
+    <div id="stolen" style="border: solid"></div>
     <script src="/elm.js"></script>
     <script>
       reorder.onclick = () => {
@@ -18,6 +20,17 @@
             )
           ]
         );
+      };
+      steal.onclick = () => {
+        const node =
+          document.body.childNodes[
+            Math.floor(
+              Math.random() * Math.max(0, document.body.childNodes.length - 1)
+            )
+          ];
+        if (node !== stolen) {
+          stolen.appendChild(node);
+        }
       };
       HTMLFontElement.prototype.replaceData = function replaceData(
         _1,
