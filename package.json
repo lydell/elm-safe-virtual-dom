@@ -1,0 +1,6 @@
+{
+  "private": true,
+  "dependencies": {
+    "elm-tooling": "^1.2.0"
+  }
+}
