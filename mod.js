@@ -19,7 +19,7 @@ function patch(code) {
 }
 
 function patcher(body) {
-  var vNode, domNode, index, length, nextDomNode, patches, reference;
+  var domNode, index, length, nextDomNode, patches, vNode;
   for (
     index = 0;
     body.b;
@@ -29,10 +29,12 @@ function patcher(body) {
       domNode = domNodes[index];
       vNode = vNodes[index];
     } else {
-      reference = domNode === undefined ? null : domNode.nextSibling;
       domNode = document.createElement("div");
       vNode = _VirtualDom_virtualize(domNode);
-      _VirtualDom_doc.body.insertBefore(domNode, reference);
+      _VirtualDom_doc.body.insertBefore(
+        domNode,
+        nextDomNode === undefined ? null : nextDomNode.nextSibling
+      );
     }
     patches = _VirtualDom_diff(vNode, body.a);
     nextDomNode = _VirtualDom_applyPatches(domNode, vNode, patches, sendToApp);
