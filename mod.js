@@ -6,7 +6,10 @@ fs.writeFileSync(file, patch(fs.readFileSync(file, "utf8")));
 
 function patch(code) {
   return code
-    .replace(`var bodyNode = _VirtualDom_doc.body;`, `var nodes = [];`)
+    .replace(
+      `var bodyNode = _VirtualDom_doc.body;`,
+      `var domNodes = [], vNodes = [];`
+    )
     .replace(`var currNode = _VirtualDom_virtualize(bodyNode);`, ``)
     .replace(`var doc = view(model);`, `$& console.log(doc);`)
     .replace(
@@ -16,38 +19,35 @@ function patch(code) {
 }
 
 function patcher(body) {
-  var currNode, domNode, index, length, nextDomNode, patches, reference;
+  var vNode, domNode, index, length, nextDomNode, patches, reference;
   for (
     index = 0;
     body.b;
     body = body.b, index++ // WHILE_CONS
   ) {
-    if (index < nodes.length) {
-      domNode = nodes[index][0];
-      currNode = nodes[index][1];
+    if (index < domNodes.length) {
+      domNode = domNodes[index];
+      vNode = vNodes[index];
     } else {
       reference = domNode === undefined ? null : domNode.nextSibling;
       domNode = document.createElement("div");
-      currNode = _VirtualDom_virtualize(domNode);
+      vNode = _VirtualDom_virtualize(domNode);
       _VirtualDom_doc.body.insertBefore(domNode, reference);
     }
-    patches = _VirtualDom_diff(currNode, body.a);
-    nextDomNode = _VirtualDom_applyPatches(
-      domNode,
-      currNode,
-      patches,
-      sendToApp
-    );
-    nodes[index] = [nextDomNode, body.a];
+    patches = _VirtualDom_diff(vNode, body.a);
+    nextDomNode = _VirtualDom_applyPatches(domNode, vNode, patches, sendToApp);
+    domNodes[index] = nextDomNode;
+    vNodes[index] = body.a;
   }
-  if (index < nodes.length) {
+  if (index < domNodes.length) {
     length = index;
-    for (; index < nodes.length; index++) {
-      domNode = nodes[index][0];
+    for (; index < domNodes.length; index++) {
+      domNode = domNodes[index];
       if (domNode.parentNode !== null) {
         domNode.parentNode.removeChild(domNode);
       }
     }
-    nodes.length = length;
+    domNodes.length = length;
+    vNodes.length = length;
   }
 }
