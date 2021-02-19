@@ -16,7 +16,7 @@ function patch(code) {
     )
     .replace(`var doc = view(model);`, `$& console.log(doc);`)
     .replace(
-      /var nextNode = _VirtualDom_node\('body'\)\(_List_Nil\)\(([^()]+)\).+\n.+\n.+\n[ \t]*currNode = nextNode;/,
+      /var nextNode = _VirtualDom_node\('body'\)\(_List_Nil\)\(((?:[^)]|\)(?!;))+)\);\n.+\n.+\n[ \t]*currNode = nextNode;/,
       `(${patcher.toString()})($1);`
     );
 }
