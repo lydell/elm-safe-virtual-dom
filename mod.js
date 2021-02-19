@@ -1,6 +1,6 @@
 const fs = require("fs");
 
-const file = "index.html";
+const file = process.argv[2];
 
 fs.writeFileSync(file, patch(fs.readFileSync(file, "utf8")));
 

@@ -1,5 +1,8 @@
 {
   "private": true,
+  "scripts": {
+    "build": "elm make src/Main.elm --output elm.js && node mod.js elm.js"
+  },
   "dependencies": {
     "elm-tooling": "^1.2.0"
   }

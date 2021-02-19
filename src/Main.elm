@@ -82,12 +82,12 @@ view model =
     { title = "Application Title"
     , body =
         [ text ("text " ++ String.fromInt model.state)
-        , div [] [ text ("div: " ++ String.fromInt model.state) ]
-        , Html.Keyed.node "section" [] [ ( "1", text ("Keyed: " ++ String.fromInt model.state) ) ]
+        , div [] [ text ("diverse: " ++ String.fromInt model.state) ]
+        , Html.Keyed.node "sektion" [] [ ( "1", text ("Nyckel: " ++ String.fromInt model.state) ) ]
         , Html.Lazy.lazy viewNum model.state
-        , map identity (text ("mapped: " ++ String.fromInt model.state))
-        , Markdown.toHtml [] ("markdown: " ++ String.fromInt model.state)
-        , Html.button [ onClick NextState ] [ text "Next" ]
+        , map identity (text ("karta: " ++ String.fromInt model.state))
+        , Markdown.toHtml [] ("nedåt: " ++ String.fromInt model.state)
+        , Html.button [ onClick NextState ] [ text "Nästa" ]
         ]
             |> (\list ->
                     case model.state of
@@ -111,4 +111,4 @@ view model =
 
 viewNum : Int -> Html msg
 viewNum n =
-    Html.text ("Lazy: " ++ String.fromInt n)
+    Html.text ("Lat: " ++ String.fromInt n)

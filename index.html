@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="sv">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DOM</title>
+  </head>
+  <body>
+    <script src="/elm.js"></script>
+    <script>
+      HTMLFontElement.prototype.replaceData = function replaceData(
+        _1,
+        _2,
+        text
+      ) {
+        this.parentNode.replaceChild(document.createTextNode(text), this);
+      };
+      Elm.Main.init();
+      setTimeout(() => {
+        document.body.appendChild(document.createElement("hr"));
+      });
+    </script>
+  </body>
+</html>
