@@ -16,22 +16,23 @@ function patch(code) {
 }
 
 function patcher(body) {
+  var currNode, domNode, index, length, nextDomNode, patches, reference;
   for (
-    var index = 0;
+    index = 0;
     body.b;
     body = body.b, index++ // WHILE_CONS
   ) {
-    var domNode, currNode;
     if (index < nodes.length) {
       domNode = nodes[index][0];
       currNode = nodes[index][1];
     } else {
+      reference = domNode === undefined ? null : domNode.nextSibling;
       domNode = document.createElement("div");
       currNode = _VirtualDom_virtualize(domNode);
-      _VirtualDom_doc.body.appendChild(domNode);
+      _VirtualDom_doc.body.insertBefore(domNode, reference);
     }
-    var patches = _VirtualDom_diff(currNode, body.a);
-    var nextDomNode = _VirtualDom_applyPatches(
+    patches = _VirtualDom_diff(currNode, body.a);
+    nextDomNode = _VirtualDom_applyPatches(
       domNode,
       currNode,
       patches,
@@ -40,12 +41,13 @@ function patcher(body) {
     nodes[index] = [nextDomNode, body.a];
   }
   if (index < nodes.length) {
+    length = index;
     for (; index < nodes.length; index++) {
-      var domNode = nodes[index][0];
+      domNode = nodes[index][0];
       if (domNode.parentNode !== null) {
         domNode.parentNode.removeChild(domNode);
       }
     }
-    nodes.splice(index);
+    nodes.length = length;
   }
 }
