@@ -8,11 +8,11 @@ function patch(code) {
   return code
     .replace(
       `var bodyNode = _VirtualDom_doc.body;`,
-      `var domNodes = [], vNodes = [], domNodesToRemove = [];`
+      `var domNodes = [], vNodes = [], domNodesToRemove = [], lower = 0, upper = 0;`
     )
     .replace(
       `var currNode = _VirtualDom_virtualize(bodyNode);`,
-      `var mutationObserver = new MutationObserver(${observe.toString()});`
+      `var mutationObserver = new MutationObserver(${observe.toString()}); ${nodeIndex.toString()}`
     )
     .replace(`var doc = view(model);`, `$& console.log(doc);`)
     .replace(
@@ -59,7 +59,11 @@ function patcher(body) {
     nextDomNode = _VirtualDom_applyPatches(domNode, vNode, patches, sendToApp);
     domNodes[index] = nextDomNode;
     vNodes[index] = body.a;
+    if (index === 0) {
+      lower = nodeIndex(nextDomNode);
+    }
   }
+  upper = nodeIndex(nextDomNode);
   if (index < domNodes.length) {
     length = index;
     for (; index < domNodes.length; index++) {
@@ -75,7 +79,7 @@ function patcher(body) {
 }
 
 function observe(records) {
-  var found, i, j, node, record;
+  var found, i, index, j, node, record;
   found = false;
   for (i = 0; i < records.length; i++) {
     record = records[i];
@@ -90,14 +94,24 @@ function observe(records) {
   // If one of our DOM nodes were removed, don’t trust any nodes added at the
   // same time. Some of them might have replaced our ones.
   // For Google Translate, the `<font>` tags appear as additions _before_ our
-  // text nodes appear as removals. Unfortunately this also removes two `<div>`s
-  // inserted by Google Translate, but the translation seems to work anyway.
+  // text nodes appear as removals.
+  // But don’t apply this to nodes before or after our range of nodes. This way
+  // we don’t remove the two `<div>`s inserted by Google Translate.
   if (found) {
     for (i = 0; i < records.length; i++) {
       record = records[i];
       for (j = 0; j < record.addedNodes.length; j++) {
-        domNodesToRemove.push(record.addedNodes[j]);
+        node = record.addedNodes[j];
+        index = nodeIndex(node);
+        if (index >= lower && index <= upper) {
+          domNodesToRemove.push(node);
+        }
       }
     }
   }
+}
+
+function nodeIndex(node) {
+  for (var index = 0; (node = node.previousSibling) !== null; index++);
+  return index;
 }
