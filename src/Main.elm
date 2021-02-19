@@ -81,31 +81,37 @@ view : Model -> Browser.Document Msg
 view model =
     { title = "Application Title"
     , body =
-        [ text ("text " ++ String.fromInt model.state)
-        , div [] [ text ("diverse: " ++ String.fromInt model.state) ]
-        , Html.Keyed.node "sektion" [] [ ( "1", text ("Nyckel: " ++ String.fromInt model.state) ) ]
-        , Html.Lazy.lazy viewNum model.state
-        , map identity (text ("karta: " ++ String.fromInt model.state))
-        , Markdown.toHtml [] ("nedåt: " ++ String.fromInt model.state)
-        , Html.button [ onClick NextState ] [ text "Nästa" ]
-        ]
-            |> (\list ->
-                    case model.state of
-                        0 ->
-                            list
+        if False then
+            [ text ("text " ++ String.fromInt model.state)
+            , Html.button [ onClick NextState ] []
+            ]
 
-                        1 ->
-                            list
+        else
+            [ text ("text " ++ String.fromInt model.state)
+            , div [] [ text ("diverse: " ++ String.fromInt model.state) ]
+            , Html.Keyed.node "sektion" [] [ ( "1", text ("Nyckel: " ++ String.fromInt model.state) ) ]
+            , Html.Lazy.lazy viewNum model.state
+            , map identity (text ("karta: " ++ String.fromInt model.state))
+            , Markdown.toHtml [] ("nedåt: " ++ String.fromInt model.state)
+            , Html.button [ onClick NextState ] [ text "Nästa" ]
+            ]
+                |> (\list ->
+                        case model.state of
+                            0 ->
+                                list
 
-                        2 ->
-                            List.reverse list
+                            1 ->
+                                list
 
-                        3 ->
-                            List.drop 2 list
+                            2 ->
+                                List.reverse list
 
-                        _ ->
-                            list
-               )
+                            3 ->
+                                List.drop 2 list
+
+                            _ ->
+                                list
+                   )
     }
 
 
