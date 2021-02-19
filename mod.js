@@ -24,7 +24,6 @@ function patch(code) {
 function patcher(body) {
   var domNode, exists, index, length, nextDomNode, patches, vNode;
   mutationObserver.disconnect();
-  console.log(domNodesToRemove);
   for (index = 0; index < domNodesToRemove.length; index++) {
     domNode = domNodesToRemove[index];
     if (domNode.parentNode === _VirtualDom_doc.body) {
@@ -95,16 +94,23 @@ function observe(records) {
   // same time. Some of them might have replaced our ones.
   // For Google Translate, the `<font>` tags appear as additions _before_ our
   // text nodes appear as removals.
-  // But don’t apply this to nodes before or after our range of nodes. This way
-  // we don’t remove the two `<div>`s inserted by Google Translate.
   if (found) {
     for (i = 0; i < records.length; i++) {
       record = records[i];
       for (j = 0; j < record.addedNodes.length; j++) {
         node = record.addedNodes[j];
-        index = nodeIndex(node);
-        if (index >= lower && index <= upper) {
+        // If one of our own nodes have been inserted, redraw it completely to
+        // protect against reordering.
+        if (domNodes.indexOf(node) !== -1) {
           domNodesToRemove.push(node);
+        } else {
+          // But don’t apply this to nodes before or after our range of nodes.
+          // This way we don’t remove the two `<div>`s inserted by Google
+          // Translate.
+          index = nodeIndex(node);
+          if (index >= lower && index <= upper) {
+            domNodesToRemove.push(node);
+          }
         }
       }
     }

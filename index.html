@@ -7,8 +7,18 @@
     <title>DOM</title>
   </head>
   <body>
+    <button id="reorder">Ändra ordning</button>
     <script src="/elm.js"></script>
     <script>
+      reorder.onclick = () => {
+        document.body.appendChild(
+          document.body.childNodes[
+            Math.floor(
+              Math.random() * Math.max(0, document.body.childNodes.length - 1)
+            )
+          ]
+        );
+      };
       HTMLFontElement.prototype.replaceData = function replaceData(
         _1,
         _2,
