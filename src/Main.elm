@@ -11,12 +11,6 @@ import Url
 
 
 
--- Add some interactivity and test re-renders!
--- Then add JS additions to body!
--- Note: Text nodes. Google translate can wrap them.
--- Idea: Have a MutationObserver that notices changes and marks areas as changed.
-
-
 main : Program () Model Msg
 main =
     Browser.application
@@ -88,7 +82,7 @@ view model =
 
         else
             [ text ("text " ++ String.fromInt model.state)
-            , div [] [ text ("diverse: " ++ String.fromInt model.state) ]
+            , div [] [ text ("div: " ++ String.fromInt model.state) ]
             , Html.Keyed.node "sektion" [] [ ( "1", text ("Nyckel: " ++ String.fromInt model.state) ) ]
             , Html.Lazy.lazy viewNum model.state
             , map identity (text ("karta: " ++ String.fromInt model.state))
