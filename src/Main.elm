@@ -3,12 +3,15 @@ module Main exposing (main)
 import Browser
 import Browser.Navigation as Nav
 import Html exposing (..)
+import Html.Attributes
 import Html.Events exposing (onClick)
 import Html.Keyed
 import Html.Lazy
+import Json.Encode
 import Markdown
+import Svg
+import Svg.Attributes
 import Url
-
 
 
 main : Program () Model Msg
@@ -82,12 +85,19 @@ view model =
 
         else
             [ text ("text " ++ String.fromInt model.state)
-            , div [] [ text ("div: " ++ String.fromInt model.state) ]
+            , div [ Html.Attributes.class "klass" ] [ text ("div: " ++ String.fromInt model.state) ]
             , Html.Keyed.node "sektion" [] [ ( "1", text ("Nyckel: " ++ String.fromInt model.state) ) ]
             , Html.Lazy.lazy viewNum model.state
             , map identity (text ("karta: " ++ String.fromInt model.state))
             , Markdown.toHtml [] ("nedåt: " ++ String.fromInt model.state)
-            , Html.button [ onClick NextState ] [ text "Nästa" ]
+            , Svg.svg [ Svg.Attributes.xmlLang "en-US" ] []
+            , Html.button
+                [ onClick NextState
+                , Html.Attributes.type_ "button"
+                , Html.Attributes.style "outline" "1px solid red"
+                , Html.Attributes.tabindex 1
+                ]
+                [ text "Nästa" ]
             ]
                 |> (\list ->
                         case model.state of

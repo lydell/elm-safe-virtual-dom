@@ -1,5 +1,10 @@
 const fs = require("fs");
 
+const morphdomCode = fs.readFileSync(
+  require.resolve("morphdom/dist/morphdom-umd.js"),
+  "utf8"
+);
+
 // Inspired by:
 // https://github.com/jinjor/elm-break-dom/tree/0fef8cea8c57841e32c878febca34cf25af664a2#appendix-hacky-patch-for-browserapplication
 // The JavaScript we’re mucking with:
@@ -19,16 +24,17 @@ const replacements = [
   // `upper` is the index of the last Elm element inside `<body>`.
   [
     `var bodyNode = _VirtualDom_doc.body;`,
-    `var domNodes = [], vNodes = [], domNodesToRemove = [], lower = 0, upper = 0;`,
+    `var domNodes = [], domNodesToRemove = [], lower = 0, upper = 0;`,
   ],
   // `currNode` used to be the virtual DOM node for `bodyNode`. It’s not
   // needed because of the above. Remove it and instead introduce a mutation
   // observer (see the `observe` function) and a `nodeIndex` helper function.
+  // Also include the `morphdom` function.
   [
     `var currNode = _VirtualDom_virtualize(bodyNode);`,
-    `var mutationObserver = new MutationObserver(${observe.toString()}); ${nodeIndex.toString()}`,
+    `var mutationObserver = new MutationObserver(${observe.toString()}); ${nodeIndex.toString()}; ${morphdomCode}; ${elmNodeToMorphNode.toString()}; ${applyFacts.toString()};`,
   ],
-  // On rerender, instead of patching the whole `<body>` element, instead path
+  // On rerender, instead of patching the whole `<body>` element, instead patch
   // every Elm element inside `<body>`.
   [
     /var nextNode = _VirtualDom_node\('body'\)\(_List_Nil\)\(((?:[^)]|\)(?!;))+)\);\n.+\n.+\n[ \t]*currNode = nextNode;/,
@@ -37,7 +43,7 @@ const replacements = [
 ];
 
 function patcher(body) {
-  var domNode, exists, index, length, nextDomNode, nextVNode, patches, vNode;
+  var domNode, exists, index, length, nextDomNode, nextVNode;
 
   // We don’t want to be notified about changes to the DOM we make ourselves.
   mutationObserver.disconnect();
@@ -65,7 +71,6 @@ function patcher(body) {
     exists = index < domNodes.length;
     if (exists) {
       domNode = domNodes[index];
-      vNode = vNodes[index];
       if (domNode.parentNode !== _VirtualDom_doc.body) {
         // Some script has (re-)moved/replaced our DOM node, so we need to make
         // one from scratch after all.
@@ -79,7 +84,6 @@ function patcher(body) {
       // A `<div>` is a good guess. The type of element doesn’t matter much –
       // Elm will patch it into whatever is needed.
       domNode = document.createElement("div");
-      vNode = _VirtualDom_virtualize(domNode);
 
       // Insert the new element into the page.
       // If this is the first of Elm’s elements, add it at the start of
@@ -97,10 +101,10 @@ function patcher(body) {
     }
 
     // Patch and update state.
-    patches = _VirtualDom_diff(vNode, nextVNode);
-    nextDomNode = _VirtualDom_applyPatches(domNode, vNode, patches, sendToApp);
+    nextDomNode = morphdom(domNode, elmNodeToMorphNode(nextVNode));
+    // patches = _VirtualDom_diff(vNode, nextVNode);
+    // nextDomNode = _VirtualDom_applyPatches(domNode, vNode, patches, sendToApp);
     domNodes[index] = nextDomNode;
-    vNodes[index] = nextVNode;
     if (index === 0) {
       lower = nodeIndex(nextDomNode);
     }
@@ -119,7 +123,6 @@ function patcher(body) {
       }
     }
     domNodes.length = length;
-    vNodes.length = length;
   }
 
   // Enable the mutation observer again. It listens for node additions and
@@ -175,6 +178,97 @@ function nodeIndex(node) {
   // https://stackoverflow.com/a/5913984/2010616
   for (var index = 0; (node = node.previousSibling) !== null; index++);
   return index;
+}
+
+function elmNodeToMorphNode(vNode) {
+  console.log("MORPH", vNode);
+  switch (vNode.$) {
+    case 0: // Html.text
+      return {
+        // nodeValue: node.a,
+        actualize(doc) {
+          return doc.createTextNode(vNode.a);
+        },
+      };
+
+    case 1: // Html.div etc
+      return {
+        actualize(doc) {
+          var domNode =
+            vNode.f === undefined
+              ? doc.createElement(vNode.c)
+              : doc.createElementNS(vNode.f, vNode.c);
+
+          if (_VirtualDom_divertHrefToApp && vNode.c === "a") {
+            domNode.addEventListener(
+              "click",
+              _VirtualDom_divertHrefToApp(domNode)
+            );
+          }
+
+          applyFacts(domNode, /*eventNode*/ undefined, vNode.d);
+
+          // for (var kids = vNode.__kids, i = 0; i < kids.length; i++) {
+          //   _VirtualDom_appendChild(
+          //     domNode,
+          //     _VirtualDom_render(
+          //       tag === __2_NODE ? kids[i] : kids[i].b,
+          //       eventNode
+          //     )
+          //   );
+          // }
+
+          return domNode;
+        },
+      };
+
+    default:
+      return document.createElement("div");
+  }
+}
+
+function applyFacts(domNode, eventNode, facts) {
+  for (var key in facts) {
+    var fact = facts[key];
+
+    switch (key) {
+      case "a1": {
+        var domNodeStyle = domNode.style;
+        for (var key in fact) {
+          domNodeStyle[key] = fact[key];
+        }
+        break;
+      }
+      case "a0":
+        // TODO!
+        // applyEvents(domNode, eventNode, value);
+        break;
+      case "a3": {
+        for (var key in fact) {
+          var value = fact[key];
+          typeof value !== "undefined"
+            ? domNode.setAttribute(key, value)
+            : domNode.removeAttribute(key);
+        }
+        break;
+      }
+      case "a4":
+        for (var key in fact) {
+          var pair = fact[key];
+          var namespace = pair.__namespace;
+          var value = pair.__value;
+
+          typeof value !== "undefined"
+            ? domNode.setAttributeNS(namespace, key, value)
+            : domNode.removeAttributeNS(namespace, key);
+        }
+        break;
+      default:
+        if ((key !== "value" && key !== "checked") || domNode[key] !== fact) {
+          domNode[key] = fact;
+        }
+    }
+  }
 }
 
 function patch(code) {
