@@ -1,29 +1,49 @@
 const fs = require("fs");
 
-const file = process.argv[2];
-
-fs.writeFileSync(file, patch(fs.readFileSync(file, "utf8")));
-
-function patch(code) {
-  return code
-    .replace(
-      `var bodyNode = _VirtualDom_doc.body;`,
-      `var domNodes = [], vNodes = [], domNodesToRemove = [], lower = 0, upper = 0;`
-    )
-    .replace(
-      `var currNode = _VirtualDom_virtualize(bodyNode);`,
-      `var mutationObserver = new MutationObserver(${observe.toString()}); ${nodeIndex.toString()}`
-    )
-    .replace(`var doc = view(model);`, `$& console.log(doc);`)
-    .replace(
-      /var nextNode = _VirtualDom_node\('body'\)\(_List_Nil\)\(((?:[^)]|\)(?!;))+)\);\n.+\n.+\n[ \t]*currNode = nextNode;/,
-      `(${patcher.toString()})($1);`
-    );
-}
+// Inspired by:
+// https://github.com/jinjor/elm-break-dom/tree/0fef8cea8c57841e32c878febca34cf25af664a2#appendix-hacky-patch-for-browserapplication
+// The JavaScript we’re mucking with:
+// https://github.com/elm/browser/blob/1d28cd625b3ce07be6dfad51660bea6de2c905f2/src/Elm/Kernel/Browser.js
+// And:
+// https://github.com/elm/browser/blob/1d28cd625b3ce07be6dfad51660bea6de2c905f2/src/Elm/Kernel/Debugger.js
+// So there should be up to 2 matches for every replacement.
+const replacements = [
+  // Instead of keeping track of only the `<body>` element, keep track of all
+  // elements directly inside `<body>` that Elm renders. `domNodes` and
+  // `vNodes` (virtual DOM nodes) are parallel lists: They always have the
+  // same length and items at the same index correspond to each other.
+  // `domNodesToRemove` is a list of elements that have replaced Elm elements.
+  // Google Translate does this – it replaces text nodes with `<font>`
+  // elements. If you have text nodes directly in `<body>` this is needed.
+  // `lower` is the index of the first Elm element inside `<body>`.
+  // `upper` is the index of the last Elm element inside `<body>`.
+  [
+    `var bodyNode = _VirtualDom_doc.body;`,
+    `var domNodes = [], vNodes = [], domNodesToRemove = [], lower = 0, upper = 0;`,
+  ],
+  // `currNode` used to be the virtual DOM node for `bodyNode`. It’s not
+  // needed because of the above. Remove it and instead introduce a mutation
+  // observer (see the `observe` function) and a `nodeIndex` helper function.
+  [
+    `var currNode = _VirtualDom_virtualize(bodyNode);`,
+    `var mutationObserver = new MutationObserver(${observe.toString()}); ${nodeIndex.toString()}`,
+  ],
+  // On rerender, instead of patching the whole `<body>` element, instead path
+  // every Elm element inside `<body>`.
+  [
+    /var nextNode = _VirtualDom_node\('body'\)\(_List_Nil\)\(((?:[^)]|\)(?!;))+)\);\n.+\n.+\n[ \t]*currNode = nextNode;/,
+    `(${patcher.toString()})($1);`,
+  ],
+];
 
 function patcher(body) {
-  var domNode, exists, index, length, nextDomNode, patches, vNode;
+  var domNode, exists, index, length, nextDomNode, nextVNode, patches, vNode;
+
+  // We don’t want to be notified about changes to the DOM we make ourselves.
   mutationObserver.disconnect();
+
+  // Remove elements that have replaced Elm elements. (See the `observe`
+  // function.)
   for (index = 0; index < domNodesToRemove.length; index++) {
     domNode = domNodesToRemove[index];
     if (domNode.parentNode === _VirtualDom_doc.body) {
@@ -31,22 +51,43 @@ function patcher(body) {
     }
   }
   domNodesToRemove.length = 0;
-  for (
-    index = 0;
-    body.b;
-    body = body.b, index++ // WHILE_CONS
-  ) {
+
+  // This kind of loop is common in Elm Kernel code and usually marked with
+  // “WHILE_CONS”. `body` is a linked list – it’s from `Browser.Document`:
+  // `{ title = "Title", body = [ Html.div [] [], Html.text "Hello!" ] }`
+  for (index = 0; body.b; body = body.b, index++) {
+    nextVNode = body.a;
+
+    // When we’ve rendered `body` before, we might have DOM and Virtual DOM
+    // nodes from before that should be patched rather than creating stuff from
+    // scratch. The first render `domNodes` and `vNodes` are going to be empty,
+    // so then we _only_ create new stuff.
     exists = index < domNodes.length;
     if (exists) {
       domNode = domNodes[index];
       vNode = vNodes[index];
       if (domNode.parentNode !== _VirtualDom_doc.body) {
+        // Some script has (re-)moved/replaced our DOM node, so we need to make
+        // one from scratch after all.
         exists = false;
       }
     }
+
+    // We don’t have previous nodes to patch. Create from scratch.
     if (!exists) {
+      // We need a dummy DOM element and a corresponding dummy Virtual DOM node.
+      // A `<div>` is a good guess. The type of element doesn’t matter much –
+      // Elm will patch it into whatever is needed.
       domNode = document.createElement("div");
       vNode = _VirtualDom_virtualize(domNode);
+
+      // Insert the new element into the page.
+      // If this is the first of Elm’s elements, add it at the start of
+      // `<body>`. Otherwise, put it after the element we worked on in the
+      // previous loop iteration. Note: If `nextDomNode.nextSibling` is
+      // `null` it means that `nextDomNode` is the last child of `<body>`.
+      // `insertBefore` inserts the element last when the second argument
+      // is `null`.
       _VirtualDom_doc.body.insertBefore(
         domNode,
         nextDomNode === undefined
@@ -54,15 +95,21 @@ function patcher(body) {
           : nextDomNode.nextSibling
       );
     }
-    patches = _VirtualDom_diff(vNode, body.a);
+
+    // Patch and update state.
+    patches = _VirtualDom_diff(vNode, nextVNode);
     nextDomNode = _VirtualDom_applyPatches(domNode, vNode, patches, sendToApp);
     domNodes[index] = nextDomNode;
-    vNodes[index] = body.a;
+    vNodes[index] = nextVNode;
     if (index === 0) {
       lower = nodeIndex(nextDomNode);
     }
   }
+
   upper = nodeIndex(nextDomNode);
+
+  // If the previous render had more children in `<body>` than now, remove the
+  // excess elements.
   if (index < domNodes.length) {
     length = index;
     for (; index < domNodes.length; index++) {
@@ -74,12 +121,18 @@ function patcher(body) {
     domNodes.length = length;
     vNodes.length = length;
   }
+
+  // Enable the mutation observer again. It listens for node additions and
+  // removals directly inside `<body>`.
   mutationObserver.observe(_VirtualDom_doc.body, { childList: true });
 }
 
 function observe(records) {
   var found, i, index, j, node, record;
+
   found = false;
+
+  // See if any of Elm’s elements have been removed by some script or extension.
   for (i = 0; i < records.length; i++) {
     record = records[i];
     for (j = 0; j < record.removedNodes.length; j++) {
@@ -90,23 +143,24 @@ function observe(records) {
       }
     }
   }
-  // If one of our DOM nodes were removed, don’t trust any nodes added at the
-  // same time. Some of them might have replaced our ones.
-  // For Google Translate, the `<font>` tags appear as additions _before_ our
+
+  // If one of Elm’s DOM nodes were removed, don’t trust any nodes added at the
+  // same time. Some of them might have replaced Elm’s elements.
+  // For Google Translate, the `<font>` tags appear as additions _before_ Elm’s
   // text nodes appear as removals.
   if (found) {
     for (i = 0; i < records.length; i++) {
       record = records[i];
       for (j = 0; j < record.addedNodes.length; j++) {
         node = record.addedNodes[j];
-        // If one of our own nodes have been inserted, redraw it completely to
-        // protect against reordering.
+        // If one of Elm’s elements has been inserted, redraw it completely to
+        // protect against reordering done by a script or extension.
         if (domNodes.indexOf(node) !== -1) {
           domNodesToRemove.push(node);
         } else {
-          // But don’t apply this to nodes before or after our range of nodes.
+          // But don’t apply this to nodes before or after Elm’s range of nodes.
           // This way we don’t remove the two `<div>`s inserted by Google
-          // Translate.
+          // Translate. This is why we track `lower` and `upper`.
           index = nodeIndex(node);
           if (index >= lower && index <= upper) {
             domNodesToRemove.push(node);
@@ -118,6 +172,47 @@ function observe(records) {
 }
 
 function nodeIndex(node) {
+  // https://stackoverflow.com/a/5913984/2010616
   for (var index = 0; (node = node.previousSibling) !== null; index++);
   return index;
 }
+
+function patch(code) {
+  return replacements.reduce(strictReplace, code);
+}
+
+function strictReplace(code, [search, replacement]) {
+  const parts = code.split(search);
+  if (parts.length <= 1) {
+    const filePath = path.resolve("elm-virtual-dom-patch-error.txt");
+    const content = `
+Patching Elm’s JS output to avoid virtual DOM errors caused by browser extensions failed!
+This message is defined in the app/patches/ folder.
+
+### Code to replace (not found!):
+${search}
+
+### Replacement:
+${replacement}
+
+### Input code:
+${code}
+`.trimStart();
+    try {
+      fs.writeFileSync(filePath, content);
+    } catch (error) {
+      throw new Error(
+        `Elm Virtual DOM patch: Code to replace was not found! Tried to write more info to ${filePath}, but got this error: ${error.message}`
+      );
+    }
+    throw new Error(
+      `Elm Virtual DOM patch: Code to replace was not found! More info written to ${filePath}`
+    );
+  }
+  return typeof search === "string"
+    ? parts.join(replacement)
+    : code.replace(search, replacement);
+}
+
+const file = process.argv[2];
+fs.writeFileSync(file, patch(fs.readFileSync(file, "utf8")));
