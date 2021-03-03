@@ -101,7 +101,7 @@ function patcher(body) {
     }
 
     // Patch and update state.
-    nextDomNode = morphdom(domNode, elmNodeToMorphNode(nextVNode));
+    nextDomNode = morphdom(domNode, elmNodeToMorphNode([nextVNode], 0));
     // patches = _VirtualDom_diff(vNode, nextVNode);
     // nextDomNode = _VirtualDom_applyPatches(domNode, vNode, patches, sendToApp);
     domNodes[index] = nextDomNode;
@@ -180,26 +180,50 @@ function nodeIndex(node) {
   return index;
 }
 
-function elmNodeToMorphNode(vNode) {
+function elmNodeToMorphNode(siblingNodes, index) {
+  if (index >= siblingNodes.length) {
+    return null;
+  }
+
+  var vNode = siblingNodes[index];
   console.log("MORPH", vNode);
+
   switch (vNode.$) {
     case 0: // Html.text
       return {
-        // nodeValue: node.a,
+        firstChild: null,
+        nextSibling: elmNodeToMorphNode(siblingNodes, index + 1),
+        nodeType: 3,
+        nodeName: "#text",
+        namespaceURI: undefined,
+        nodeValue: vNode.a,
+        attributes: undefined,
+        value: undefined,
+        selected: undefined,
+        disabled: undefined,
         actualize(doc) {
-          return doc.createTextNode(vNode.a);
+          return doc.createTextNode(this.nodeValue);
         },
       };
 
     case 1: // Html.div etc
       return {
+        firstChild: elmNodeToMorphNode(vNode.e, 0),
+        nextSibling: elmNodeToMorphNode(siblingNodes, index + 1),
+        nodeType: 1,
+        nodeName: vNode.c,
+        namespaceURI:
+          vNode.f === undefined ? "http://www.w3.org/1999/xhtml" : vNode.f,
+        nodeValue: null,
+        attributes: [], // TODO!
+        value: vNode.d.value,
+        selected: vNode.d.selected,
+        disabled: vNode.d.disabled,
+        hasAttributeNS(namespaceURI, name) {}, // TODO!
         actualize(doc) {
-          var domNode =
-            vNode.f === undefined
-              ? doc.createElement(vNode.c)
-              : doc.createElementNS(vNode.f, vNode.c);
+          var domNode = doc.createElementNS(this.namespaceURI, this.nodeName);
 
-          if (_VirtualDom_divertHrefToApp && vNode.c === "a") {
+          if (_VirtualDom_divertHrefToApp && this.nodeName === "a") {
             domNode.addEventListener(
               "click",
               _VirtualDom_divertHrefToApp(domNode)
@@ -207,6 +231,13 @@ function elmNodeToMorphNode(vNode) {
           }
 
           applyFacts(domNode, /*eventNode*/ undefined, vNode.d);
+
+          var curChild = this.firstChild;
+
+          while (curChild) {
+            domNode.appendChild(curChild.actualize(document));
+            curChild = curChild.nextSibling;
+          }
 
           // for (var kids = vNode.__kids, i = 0; i < kids.length; i++) {
           //   _VirtualDom_appendChild(
@@ -222,8 +253,11 @@ function elmNodeToMorphNode(vNode) {
         },
       };
 
-    default:
-      return document.createElement("div");
+    default: {
+      var div = document.createElement("div");
+      div.dataset.dollar = vNode.$;
+      return div;
+    }
   }
 }
 
