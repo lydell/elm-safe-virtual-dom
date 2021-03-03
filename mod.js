@@ -83,7 +83,7 @@ function patcher(body) {
       // We need a dummy DOM element and a corresponding dummy Virtual DOM node.
       // A `<div>` is a good guess. The type of element doesn’t matter much –
       // Elm will patch it into whatever is needed.
-      domNode = document.createElement("div");
+      domNode = _VirtualDom_doc.createElement("div");
 
       // Insert the new element into the page.
       // If this is the first of Elm’s elements, add it at the start of
@@ -235,7 +235,7 @@ function elmNodeToMorphNode(siblingNodes, index) {
           var curChild = this.firstChild;
 
           while (curChild) {
-            domNode.appendChild(curChild.actualize(document));
+            domNode.appendChild(curChild.actualize(doc));
             curChild = curChild.nextSibling;
           }
 
@@ -254,7 +254,7 @@ function elmNodeToMorphNode(siblingNodes, index) {
       };
 
     default: {
-      var div = document.createElement("div");
+      var div = _VirtualDom_doc.createElement("div");
       div.dataset.dollar = vNode.$;
       return div;
     }
