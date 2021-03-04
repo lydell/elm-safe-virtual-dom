@@ -7,7 +7,6 @@ import Html.Attributes
 import Html.Events exposing (onClick)
 import Html.Keyed
 import Html.Lazy
-import Json.Encode
 import Markdown
 import Svg
 import Svg.Attributes
@@ -86,7 +85,7 @@ view model =
         else
             [ text ("text " ++ String.fromInt model.state)
             , div [ Html.Attributes.class "klass" ] [ text ("div: " ++ String.fromInt model.state) ]
-            , Html.Keyed.node "sektion" [] [ ( "1", text ("Nyckel: " ++ String.fromInt model.state) ) ]
+            , Html.Keyed.node "sektion" [] [ ( "key1", text ("Nyckel: " ++ String.fromInt model.state) ), ( "key2", div [] [ text "key2" ] ) ]
             , Html.Lazy.lazy viewNum model.state
             , map identity (text ("karta: " ++ String.fromInt model.state))
             , Markdown.toHtml [] ("nedåt: " ++ String.fromInt model.state)

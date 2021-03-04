@@ -26,7 +26,7 @@ const replacements = [
   // observer (see the `observe` function) and a `nodeIndex` helper function.
   [
     `var currNode = _VirtualDom_virtualize(bodyNode);`,
-    `var mutationObserver = new MutationObserver(${observe.toString()}); ${nodeIndex.toString()}; ${morph.toString()}; ${morphChildren.toString()}; ${applyFacts.toString()};`,
+    `var mutationObserver = new MutationObserver(${observe.toString()}); ${nodeIndex.toString()}; ${morph.toString()}; ${morphChildren.toString()}; ${morphChildrenKeyed.toString()}; ${applyFacts.toString()};`,
   ],
   // On rerender, instead of patching the whole `<body>` element, instead patch
   // every Elm element inside `<body>`.
@@ -186,7 +186,9 @@ function morph(domNode, vNode) {
       return _VirtualDom_doc.createTextNode(text);
     }
 
-    case 1: {
+    case 1:
+    case 2: {
+      var childMorpher = vNode.$ === 1 ? morphChildren : morphChildrenKeyed;
       var nodeName = vNode.c;
       var namespaceURI =
         vNode.f === undefined ? "http://www.w3.org/1999/xhtml" : vNode.f;
@@ -199,13 +201,13 @@ function morph(domNode, vNode) {
         domNode.nodeName === nodeName
       ) {
         applyFacts(domNode, undefined, facts);
-        morphChildren(domNode, children);
+        childMorpher(domNode, children);
         return domNode;
       }
 
       var newNode = _VirtualDom_doc.createElementNS(namespaceURI, nodeName);
       applyFacts(newNode, facts);
-      morphChildren(newNode, children);
+      childMorpher(newNode, children);
 
       // TODO: Does this need to run even if `domNode` was of the correct type?
       if (_VirtualDom_divertHrefToApp && nodeName === "a") {
@@ -225,9 +227,14 @@ function morph(domNode, vNode) {
 
 function morphChildren(domNode, children) {
   var numChildNodes = domNode.childNodes.length;
+  var previous, next;
   for (var i = 0; i < children.length; i++) {
     if (i < numChildNodes) {
-      morph(domNode.childNodes[i], children[i]);
+      previous = domNode.childNodes[i];
+      next = morph(previous, children[i]);
+      if (previous !== next) {
+        domNode.replaceChild(next, previous);
+      }
     } else {
       domNode.appendChild(morph(undefined, children[i]));
     }
@@ -235,6 +242,48 @@ function morphChildren(domNode, children) {
   for (var j = numChildNodes - i; j > 0; j--) {
     domNode.removeChild(domNode.lastChild);
   }
+}
+
+function morphChildrenKeyed(domNode, children) {
+  var map = new Map();
+
+  for (var i = domNode.childNodes.length - 1; i >= 0; i++) {
+    var child = domNode.childNodes[i];
+    var key = child.elmKey;
+    if (typeof key === "string" && !map.has(key)) {
+      map.set(key, child);
+    } else {
+      domNode.removeChild(child);
+    }
+  }
+
+  var previousDomNode = null;
+
+  for (var i = 0; i < children.length; i++) {
+    var child = children[i];
+    var key = child.a;
+    var node = child.b;
+    var previous = map.get(key);
+    var next;
+    if (previous !== undefined) {
+      next = morph(previous, node);
+      map.delete(key);
+      if (previous !== next) {
+        domNode.removeChild(previous);
+        domNode.insertBefore(next, previousDomNode);
+      } else if (next.previousSibling !== previousDomNode) {
+        domNode.insertBefore(next, previousDomNode);
+      }
+    } else {
+      next = morph(undefined, node);
+      domNode.insertBefore(next, previousDomNode);
+    }
+    previousDomNode = previous;
+  }
+
+  map.forEach(function (child) {
+    domNode.removeChild(child);
+  });
 }
 
 // TODO: Does this remove old attributes correctly?
