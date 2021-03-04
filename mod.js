@@ -179,11 +179,19 @@ function morph(domNode, vNode) {
     case 0: {
       // Html.text
       var text = vNode.a;
-      if (domNode !== undefined && domNode.nodeType === 3) {
-        domNode.data = text;
+      if (
+        domNode !== undefined &&
+        domNode.elm !== undefined &&
+        domNode.nodeType === 3
+      ) {
+        if (domNode.data !== text) {
+          domNode.data = text;
+        }
         return domNode;
       }
-      return _VirtualDom_doc.createTextNode(text);
+      var newNode = _VirtualDom_doc.createTextNode(text);
+      newNode.elm = { key: undefined };
+      return newNode;
     }
 
     case 1:
@@ -197,6 +205,7 @@ function morph(domNode, vNode) {
 
       if (
         domNode !== undefined &&
+        domNode.elm !== undefined &&
         domNode.namespaceURI === namespaceURI &&
         domNode.nodeName === nodeName
       ) {
@@ -206,13 +215,19 @@ function morph(domNode, vNode) {
       }
 
       var newNode = _VirtualDom_doc.createElementNS(namespaceURI, nodeName);
-      morphFacts(newNode, facts);
-      childMorpher(newNode, children);
+      newNode.elm = {
+        key: undefined,
+        eventFunctions: new Map(),
+        style: new Map(),
+        properties: new Map(),
+      };
 
-      // TODO: Does this need to run even if `domNode` was of the correct type?
       if (_VirtualDom_divertHrefToApp && nodeName === "a") {
         newNode.addEventListener("click", _VirtualDom_divertHrefToApp(newNode));
       }
+
+      morphFacts(newNode, undefined, facts);
+      childMorpher(newNode, children);
 
       return newNode;
     }
@@ -249,7 +264,7 @@ function morphChildrenKeyed(domNode, children) {
 
   for (var i = domNode.childNodes.length - 1; i >= 0; i++) {
     var child = domNode.childNodes[i];
-    var key = child.elmKey;
+    var key = child.elm != null ? child.elm.key : undefined;
     if (typeof key === "string" && !map.has(key)) {
       map.set(key, child);
     } else {
@@ -269,6 +284,7 @@ function morphChildrenKeyed(domNode, children) {
       next = morph(previous, node);
       map.delete(key);
       if (previous !== next) {
+        next.elm.key = key;
         domNode.removeChild(previous);
         domNode.insertBefore(next, previousDomNode);
       } else if (next.previousSibling !== previousDomNode) {
@@ -276,6 +292,7 @@ function morphChildrenKeyed(domNode, children) {
       }
     } else {
       next = morph(undefined, node);
+      next.elm.key = key;
       domNode.insertBefore(next, previousDomNode);
     }
     previousDomNode = previous;
@@ -286,55 +303,98 @@ function morphChildrenKeyed(domNode, children) {
   });
 }
 
-// TODO: Does this remove old attributes correctly?
 function morphFacts(domNode, eventNode, facts) {
-  var fact, value;
-  for (var key in facts) {
-    fact = facts[key];
+  var events = facts.a0;
+  delete facts.a0;
+  var styles = facts.a1;
+  delete facts.a1;
+  var attributes = facts.a3;
+  delete facts.a3;
+  var namespacedAttributes = facts.a4;
+  delete facts.a4;
 
-    switch (key) {
-      case "a1": {
-        var domNodeStyle = domNode.style;
-        for (var key in fact) {
-          value = fact[key];
-          if (domNodeStyle[key] !== value) {
-            domNodeStyle[key] = value;
-          }
-        }
-        break;
-      }
-      case "a0":
-        // TODO!
-        _VirtualDom_applyEvents(domNode, eventNode, value);
-        break;
-      case "a3": {
-        for (var key in fact) {
-          value = fact[key];
-          typeof value !== "undefined"
-            ? domNode.setAttribute(key, value)
-            : domNode.removeAttribute(key);
-        }
-        break;
-      }
-      case "a4":
-        // TODO: Here we need to what props to “reset” somehow?
-        for (var key in fact) {
-          var pair = fact[key];
-          // TODO: These props are mangled, right?
-          var namespace = pair.__namespace;
-          var value = pair.__value;
+  if (events !== undefined) {
+    // TODO!
+    // Also needs to _remove_ listeners.
+    _VirtualDom_applyEvents(domNode, eventNode, events);
+  }
 
-          typeof value !== "undefined"
-            ? domNode.setAttributeNS(namespace, key, value)
-            : domNode.removeAttributeNS(namespace, key);
+  if (styles !== undefined) {
+    var domNodeStyle = domNode.style;
+    var saved = domNode.elm.style;
+    for (var key in styles) {
+      value = styles[key];
+      if (domNodeStyle[key] !== value) {
+        if (!saved.has(key)) {
+          saved.set(key, domNodeStyle.getPropertyValue(key));
         }
-        break;
-      default:
-        if ((key !== "value" && key !== "checked") || domNode[key] !== fact) {
-          domNode[key] = fact;
-        }
+        domNodeStyle.setProperty(key, value);
+      }
+    }
+    saved.forEach(function (defaultValue, key) {
+      if (!(key in styles)) {
+        domNodeStyle.setProperty(key, defaultValue);
+        saved.delete(key);
+      }
+    });
+  }
+
+  if (attributes !== undefined) {
+    for (var key in attributes) {
+      var value = attributes[key];
+      if (domNode.getAttribute(key) !== value) {
+        domNode.setAttribute(key, value);
+      }
     }
   }
+  if (namespacedAttributes !== undefined) {
+    for (var key in namespacedAttributes) {
+      var pair = namespacedAttributes[key];
+      var namespace = pair.f;
+      var value = pair.o;
+      if (domNode.getAttributeNS(namespace, key) !== value) {
+        domNode.setAttributeNS(namespace, key, value);
+      }
+    }
+  }
+  for (var i = 0; i < domNode.attributes.length; i++) {
+    var attr = domNode.attributes[i];
+    if (attributes !== undefined && attr.name in attributes) {
+      if (attr.namespaceURI !== null) {
+        // TODO: Is this able to remove when the namespaceURI differs?
+        // Do we need to check .prefix too?
+        domNode.removeAttribute(attr.name);
+      }
+    } else if (
+      namespacedAttributes !== undefined &&
+      attr.name in namespacedAttributes
+    ) {
+      if (attr.namespaceURI !== namespacedAttributes[attr.name].f) {
+        // TODO: Here too.
+        domNode.removeAttribute(attr.name);
+      }
+    } else {
+      // TODO: And here.
+      domNode.removeAttribute(attr.name);
+    }
+  }
+
+  var saved = domNode.elm.properties;
+  for (var key in facts) {
+    value = facts[key];
+    if (domNode[key] !== value) {
+      if (!saved.has(key)) {
+        saved.set(key, domNode[key]);
+      }
+      domNode[key] = value;
+    }
+  }
+  saved.forEach(function (defaultValue, key) {
+    if (!(key in facts)) {
+      domNode[key] = defaultValue;
+      saved.delete(key);
+    }
+  });
 }
 
 function patch(code) {
