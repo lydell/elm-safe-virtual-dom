@@ -26,7 +26,7 @@ const replacements = [
   // observer (see the `observe` function) and a `nodeIndex` helper function.
   [
     `var currNode = _VirtualDom_virtualize(bodyNode);`,
-    `var mutationObserver = new MutationObserver(${observe.toString()}); ${nodeIndex.toString()}; ${morph.toString()}; ${morphChildren.toString()}; ${morphChildrenKeyed.toString()}; ${applyFacts.toString()};`,
+    `var mutationObserver = new MutationObserver(${observe.toString()}); ${nodeIndex.toString()}; ${morph.toString()}; ${morphChildren.toString()}; ${morphChildrenKeyed.toString()}; ${morphFacts.toString()};`,
   ],
   // On rerender, instead of patching the whole `<body>` element, instead patch
   // every Elm element inside `<body>`.
@@ -200,13 +200,13 @@ function morph(domNode, vNode) {
         domNode.namespaceURI === namespaceURI &&
         domNode.nodeName === nodeName
       ) {
-        applyFacts(domNode, undefined, facts);
+        morphFacts(domNode, undefined, facts);
         childMorpher(domNode, children);
         return domNode;
       }
 
       var newNode = _VirtualDom_doc.createElementNS(namespaceURI, nodeName);
-      applyFacts(newNode, facts);
+      morphFacts(newNode, facts);
       childMorpher(newNode, children);
 
       // TODO: Does this need to run even if `domNode` was of the correct type?
@@ -287,15 +287,19 @@ function morphChildrenKeyed(domNode, children) {
 }
 
 // TODO: Does this remove old attributes correctly?
-function applyFacts(domNode, eventNode, facts) {
+function morphFacts(domNode, eventNode, facts) {
+  var fact, value;
   for (var key in facts) {
-    var fact = facts[key];
+    fact = facts[key];
 
     switch (key) {
       case "a1": {
         var domNodeStyle = domNode.style;
         for (var key in fact) {
-          domNodeStyle[key] = fact[key];
+          value = fact[key];
+          if (domNodeStyle[key] !== value) {
+            domNodeStyle[key] = value;
+          }
         }
         break;
       }
@@ -305,7 +309,7 @@ function applyFacts(domNode, eventNode, facts) {
         break;
       case "a3": {
         for (var key in fact) {
-          var value = fact[key];
+          value = fact[key];
           typeof value !== "undefined"
             ? domNode.setAttribute(key, value)
             : domNode.removeAttribute(key);
@@ -313,8 +317,10 @@ function applyFacts(domNode, eventNode, facts) {
         break;
       }
       case "a4":
+        // TODO: Here we need to what props to “reset” somehow?
         for (var key in fact) {
           var pair = fact[key];
+          // TODO: These props are mangled, right?
           var namespace = pair.__namespace;
           var value = pair.__value;
 
