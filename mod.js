@@ -74,7 +74,7 @@ function patcher(body) {
     }
 
     // Patch and update state.
-    domNode = morph(domNode, nextVNode);
+    domNode = morph(domNode, nextVNode, sendToApp);
 
     if (!exists) {
       // Insert the new element into the page.
@@ -172,7 +172,7 @@ function nodeIndex(node) {
   return index;
 }
 
-function morph(domNode, vNode) {
+function morph(domNode, vNode, eventNode) {
   console.log("MORPH", vNode);
 
   switch (vNode.$) {
@@ -209,7 +209,7 @@ function morph(domNode, vNode) {
         domNode.namespaceURI === namespaceURI &&
         domNode.nodeName === nodeName
       ) {
-        morphFacts(domNode, undefined, facts);
+        morphFacts(domNode, eventNode, facts);
         childMorpher(domNode, children);
         return domNode;
       }
@@ -226,7 +226,7 @@ function morph(domNode, vNode) {
         newNode.addEventListener("click", _VirtualDom_divertHrefToApp(newNode));
       }
 
-      morphFacts(newNode, undefined, facts);
+      morphFacts(newNode, eventNode, facts);
       childMorpher(newNode, children);
 
       return newNode;
@@ -316,6 +316,7 @@ function morphFacts(domNode, eventNode, facts) {
   if (events !== undefined) {
     // TODO!
     // Also needs to _remove_ listeners.
+    // Is this all that’s needed?
     _VirtualDom_applyEvents(domNode, eventNode, events);
   }
 
