@@ -1,10 +1,5 @@
 const fs = require("fs");
 
-const morphdomCode = fs.readFileSync(
-  require.resolve("morphdom/dist/morphdom-umd.js"),
-  "utf8"
-);
-
 // Inspired by:
 // https://github.com/jinjor/elm-break-dom/tree/0fef8cea8c57841e32c878febca34cf25af664a2#appendix-hacky-patch-for-browserapplication
 // The JavaScript we’re mucking with:
@@ -29,10 +24,9 @@ const replacements = [
   // `currNode` used to be the virtual DOM node for `bodyNode`. It’s not
   // needed because of the above. Remove it and instead introduce a mutation
   // observer (see the `observe` function) and a `nodeIndex` helper function.
-  // Also include the `morphdom` function.
   [
     `var currNode = _VirtualDom_virtualize(bodyNode);`,
-    `var mutationObserver = new MutationObserver(${observe.toString()}); ${nodeIndex.toString()}; ${morphdomCode}; ${elmNodeToMorphNode.toString()}; ${applyFacts.toString()};`,
+    `var mutationObserver = new MutationObserver(${observe.toString()}); ${nodeIndex.toString()}; ${morph.toString()}; ${morphChildren.toString()}; ${applyFacts.toString()};`,
   ],
   // On rerender, instead of patching the whole `<body>` element, instead patch
   // every Elm element inside `<body>`.
@@ -43,7 +37,7 @@ const replacements = [
 ];
 
 function patcher(body) {
-  var domNode, exists, index, length, nextDomNode, nextVNode;
+  var domNode, exists, index, length, nextVNode, previousDomNode;
 
   // We don’t want to be notified about changes to the DOM we make ourselves.
   mutationObserver.disconnect();
@@ -69,6 +63,7 @@ function patcher(body) {
     // scratch. The first render `domNodes` and `vNodes` are going to be empty,
     // so then we _only_ create new stuff.
     exists = index < domNodes.length;
+    domNode = undefined;
     if (exists) {
       domNode = domNodes[index];
       if (domNode.parentNode !== _VirtualDom_doc.body) {
@@ -78,13 +73,10 @@ function patcher(body) {
       }
     }
 
-    // We don’t have previous nodes to patch. Create from scratch.
-    if (!exists) {
-      // We need a dummy DOM element and a corresponding dummy Virtual DOM node.
-      // A `<div>` is a good guess. The type of element doesn’t matter much –
-      // Elm will patch it into whatever is needed.
-      domNode = _VirtualDom_doc.createElement("div");
+    // Patch and update state.
+    domNode = morph(domNode, nextVNode);
 
+    if (!exists) {
       // Insert the new element into the page.
       // If this is the first of Elm’s elements, add it at the start of
       // `<body>`. Otherwise, put it after the element we worked on in the
@@ -94,23 +86,23 @@ function patcher(body) {
       // is `null`.
       _VirtualDom_doc.body.insertBefore(
         domNode,
-        nextDomNode === undefined
+        previousDomNode === undefined
           ? _VirtualDom_doc.body.firstChild
-          : nextDomNode.nextSibling
+          : previousDomNode.nextSibling
       );
     }
 
-    // Patch and update state.
-    nextDomNode = morphdom(domNode, elmNodeToMorphNode([nextVNode], 0));
     // patches = _VirtualDom_diff(vNode, nextVNode);
     // nextDomNode = _VirtualDom_applyPatches(domNode, vNode, patches, sendToApp);
-    domNodes[index] = nextDomNode;
+    domNodes[index] = domNode;
+    previousDomNode = domNode;
+
     if (index === 0) {
-      lower = nodeIndex(nextDomNode);
+      lower = nodeIndex(domNode);
     }
   }
 
-  upper = nodeIndex(nextDomNode);
+  upper = nodeIndex(domNode);
 
   // If the previous render had more children in `<body>` than now, remove the
   // excess elements.
@@ -180,78 +172,48 @@ function nodeIndex(node) {
   return index;
 }
 
-function elmNodeToMorphNode(siblingNodes, index) {
-  if (index >= siblingNodes.length) {
-    return null;
-  }
-
-  var vNode = siblingNodes[index];
+function morph(domNode, vNode) {
   console.log("MORPH", vNode);
 
   switch (vNode.$) {
-    case 0: // Html.text
-      return {
-        firstChild: null,
-        nextSibling: elmNodeToMorphNode(siblingNodes, index + 1),
-        nodeType: 3,
-        nodeName: "#text",
-        namespaceURI: undefined,
-        nodeValue: vNode.a,
-        attributes: undefined,
-        value: undefined,
-        selected: undefined,
-        disabled: undefined,
-        actualize(doc) {
-          return doc.createTextNode(this.nodeValue);
-        },
-      };
+    case 0: {
+      // Html.text
+      var text = vNode.a;
+      if (domNode !== undefined && domNode.nodeType === 3) {
+        domNode.data = text;
+        return domNode;
+      }
+      return _VirtualDom_doc.createTextNode(text);
+    }
 
-    case 1: // Html.div etc
-      return {
-        firstChild: elmNodeToMorphNode(vNode.e, 0),
-        nextSibling: elmNodeToMorphNode(siblingNodes, index + 1),
-        nodeType: 1,
-        nodeName: vNode.c,
-        namespaceURI:
-          vNode.f === undefined ? "http://www.w3.org/1999/xhtml" : vNode.f,
-        nodeValue: null,
-        attributes: [], // TODO!
-        value: vNode.d.value,
-        selected: vNode.d.selected,
-        disabled: vNode.d.disabled,
-        hasAttributeNS(namespaceURI, name) {}, // TODO!
-        actualize(doc) {
-          var domNode = doc.createElementNS(this.namespaceURI, this.nodeName);
+    case 1: {
+      var nodeName = vNode.c;
+      var namespaceURI =
+        vNode.f === undefined ? "http://www.w3.org/1999/xhtml" : vNode.f;
+      var facts = vNode.d;
+      var children = vNode.e;
 
-          if (_VirtualDom_divertHrefToApp && this.nodeName === "a") {
-            domNode.addEventListener(
-              "click",
-              _VirtualDom_divertHrefToApp(domNode)
-            );
-          }
+      if (
+        domNode !== undefined &&
+        domNode.namespaceURI === namespaceURI &&
+        domNode.nodeName === nodeName
+      ) {
+        applyFacts(domNode, undefined, facts);
+        morphChildren(domNode, children);
+        return domNode;
+      }
 
-          applyFacts(domNode, /*eventNode*/ undefined, vNode.d);
+      var newNode = _VirtualDom_doc.createElementNS(namespaceURI, nodeName);
+      applyFacts(newNode, facts);
+      morphChildren(newNode, children);
 
-          var curChild = this.firstChild;
+      // TODO: Does this need to run even if `domNode` was of the correct type?
+      if (_VirtualDom_divertHrefToApp && nodeName === "a") {
+        newNode.addEventListener("click", _VirtualDom_divertHrefToApp(newNode));
+      }
 
-          while (curChild) {
-            domNode.appendChild(curChild.actualize(doc));
-            curChild = curChild.nextSibling;
-          }
-
-          // for (var kids = vNode.__kids, i = 0; i < kids.length; i++) {
-          //   _VirtualDom_appendChild(
-          //     domNode,
-          //     _VirtualDom_render(
-          //       tag === __2_NODE ? kids[i] : kids[i].b,
-          //       eventNode
-          //     )
-          //   );
-          // }
-
-          return domNode;
-        },
-      };
+      return newNode;
+    }
 
     default: {
       var div = _VirtualDom_doc.createElement("div");
@@ -261,6 +223,21 @@ function elmNodeToMorphNode(siblingNodes, index) {
   }
 }
 
+function morphChildren(domNode, children) {
+  var numChildNodes = domNode.childNodes.length;
+  for (var i = 0; i < children.length; i++) {
+    if (i < numChildNodes) {
+      morph(domNode.childNodes[i], children[i]);
+    } else {
+      domNode.appendChild(morph(undefined, children[i]));
+    }
+  }
+  for (var j = numChildNodes - i; j > 0; j--) {
+    domNode.removeChild(domNode.lastChild);
+  }
+}
+
+// TODO: Does this remove old attributes correctly?
 function applyFacts(domNode, eventNode, facts) {
   for (var key in facts) {
     var fact = facts[key];
@@ -275,7 +252,7 @@ function applyFacts(domNode, eventNode, facts) {
       }
       case "a0":
         // TODO!
-        // applyEvents(domNode, eventNode, value);
+        _VirtualDom_applyEvents(domNode, eventNode, value);
         break;
       case "a3": {
         for (var key in fact) {
