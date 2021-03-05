@@ -76,7 +76,16 @@ function patcher(body) {
     // Patch and update state.
     nextDomNode = morph(domNode, nextVNode, sendToApp);
 
-    if (!exists || domNode !== nextDomNode) {
+    if (
+      domNode !== undefined &&
+      domNode !== nextDomNode &&
+      domNode.parentNode === _VirtualDom_doc.body
+    ) {
+      domNode.parentNode.removeChild(domNode);
+      exists = false;
+    }
+
+    if (!exists) {
       // Insert the new element into the page.
       // If this is the first of Elm’s elements, add it at the start of
       // `<body>`. Otherwise, put it after the element we worked on in the
