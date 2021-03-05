@@ -360,23 +360,19 @@ function morphFacts(domNode, eventNode, facts) {
   }
   for (var i = 0; i < domNode.attributes.length; i++) {
     var attr = domNode.attributes[i];
-    if (attributes !== undefined && attr.name in attributes) {
-      if (attr.namespaceURI !== null) {
-        // TODO: Is this able to remove when the namespaceURI differs?
-        // Do we need to check .prefix too?
-        domNode.removeAttribute(attr.name);
-      }
-    } else if (
-      namespacedAttributes !== undefined &&
-      attr.name in namespacedAttributes
-    ) {
-      if (attr.namespaceURI !== namespacedAttributes[attr.name].f) {
-        // TODO: Here too.
-        domNode.removeAttribute(attr.name);
+    if (attr.namespaceURI === null) {
+      if (!(attributes !== undefined && attr.name in attributes)) {
+        domNode.removeAttribute(attr.attr.name);
       }
     } else {
-      // TODO: And here.
-      domNode.removeAttribute(attr.name);
+      if (
+        !(
+          namespacedAttributes !== undefined &&
+          attr.name in namespacedAttributes
+        )
+      ) {
+        domNode.removeAttributeNS(attr.namespaceURI, attr.name);
+      }
     }
   }
 
