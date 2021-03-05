@@ -37,7 +37,7 @@ const replacements = [
 ];
 
 function patcher(body) {
-  var domNode, exists, index, length, nextVNode, previousDomNode;
+  var domNode, exists, index, length, nextDomNode, nextVNode, previousDomNode;
 
   // We don’t want to be notified about changes to the DOM we make ourselves.
   mutationObserver.disconnect();
@@ -74,9 +74,9 @@ function patcher(body) {
     }
 
     // Patch and update state.
-    domNode = morph(domNode, nextVNode, sendToApp);
+    nextDomNode = morph(domNode, nextVNode, sendToApp);
 
-    if (!exists) {
+    if (!exists || domNode !== nextDomNode) {
       // Insert the new element into the page.
       // If this is the first of Elm’s elements, add it at the start of
       // `<body>`. Otherwise, put it after the element we worked on in the
@@ -85,7 +85,7 @@ function patcher(body) {
       // `insertBefore` inserts the element last when the second argument
       // is `null`.
       _VirtualDom_doc.body.insertBefore(
-        domNode,
+        nextDomNode,
         previousDomNode === undefined
           ? _VirtualDom_doc.body.firstChild
           : previousDomNode.nextSibling
@@ -93,16 +93,16 @@ function patcher(body) {
     }
 
     // patches = _VirtualDom_diff(vNode, nextVNode);
-    // nextDomNode = _VirtualDom_applyPatches(domNode, vNode, patches, sendToApp);
-    domNodes[index] = domNode;
-    previousDomNode = domNode;
+    // nextDomNode = _VirtualDom_applyPatches(nextDomNode, vNode, patches, sendToApp);
+    domNodes[index] = nextDomNode;
+    previousDomNode = nextDomNode;
 
     if (index === 0) {
-      lower = nodeIndex(domNode);
+      lower = nodeIndex(nextDomNode);
     }
   }
 
-  upper = nodeIndex(domNode);
+  upper = nodeIndex(nextDomNode);
 
   // If the previous render had more children in `<body>` than now, remove the
   // excess elements.
@@ -362,7 +362,7 @@ function morphFacts(domNode, eventNode, facts) {
     var attr = domNode.attributes[i];
     if (attr.namespaceURI === null) {
       if (!(attributes !== undefined && attr.name in attributes)) {
-        domNode.removeAttribute(attr.attr.name);
+        domNode.removeAttribute(attr.name);
       }
     } else {
       if (
