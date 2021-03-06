@@ -26,7 +26,7 @@ const replacements = [
   // observer (see the `observe` function) and a `nodeIndex` helper function.
   [
     `var currNode = _VirtualDom_virtualize(bodyNode);`,
-    `var mutationObserver = new MutationObserver(${observe.toString()}); ${nodeIndex.toString()}; ${morph.toString()}; ${morphChildren.toString()}; ${morphChildrenKeyed.toString()}; ${morphFacts.toString()};`,
+    `var mutationObserver = new MutationObserver(${observe.toString()}); ${nodeIndex.toString()}; ${morph.toString()}; ${emptyElmState.toString()}; ${morphChildren.toString()}; ${morphChildrenKeyed.toString()}; ${morphFacts.toString()};`,
   ],
   // On rerender, instead of patching the whole `<body>` element, instead patch
   // every Elm element inside `<body>`.
@@ -224,12 +224,7 @@ function morph(domNode, vNode, eventNode) {
       }
 
       var newNode = _VirtualDom_doc.createElementNS(namespaceURI, nodeName);
-      newNode.elm = {
-        key: undefined,
-        eventFunctions: new Map(),
-        style: new Map(),
-        properties: new Map(),
-      };
+      newNode.elm = emptyElmState();
 
       if (_VirtualDom_divertHrefToApp && nodeName === "a") {
         newNode.addEventListener("click", _VirtualDom_divertHrefToApp(newNode));
@@ -241,12 +236,50 @@ function morph(domNode, vNode, eventNode) {
       return newNode;
     }
 
+    case 3: {
+      var facts = vNode.d;
+      var model = vNode.g;
+      var render = vNode.h;
+      var diff = vNode.i;
+      var newNode;
+
+      if (
+        domNode !== undefined &&
+        domNode.elm !== undefined &&
+        domNode.elm.custom !== undefined &&
+        domNode.elm.custom.render === render
+      ) {
+        var patch = diff(domNode.elm.custom.model, model);
+        newNode = patch(domNode);
+      } else {
+        newNode = render(model);
+      }
+
+      newNode.elm = emptyElmState();
+      newNode.elm.custom = {
+        render: render,
+        model: model,
+      };
+      morphFacts(newNode, eventNode, facts);
+      return newNode;
+    }
+
     default: {
       var div = _VirtualDom_doc.createElement("div");
       div.dataset.dollar = vNode.$;
       return div;
     }
   }
+}
+
+function emptyElmState() {
+  return {
+    key: undefined,
+    eventFunctions: new Map(),
+    style: new Map(),
+    properties: new Map(),
+    custom: undefined,
+  };
 }
 
 function morphChildren(domNode, children) {

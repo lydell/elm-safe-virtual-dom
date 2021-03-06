@@ -88,7 +88,7 @@ view model =
             , Html.Keyed.node "sektion" [] [ ( "key1", text ("Nyckel: " ++ String.fromInt model.state) ), ( "key2", div [] [ text "key2" ] ) ]
             , Html.Lazy.lazy viewNum model.state
             , map identity (text ("karta: " ++ String.fromInt model.state))
-            , Markdown.toHtml [] ("nedåt: " ++ String.fromInt model.state)
+            , Markdown.toHtml [ Html.Attributes.id "my-id" ] ("nedåt: " ++ String.fromInt model.state)
             , Svg.svg [ Svg.Attributes.xmlLang "en-US" ] []
             , Html.button
                 [ onClick NextState
