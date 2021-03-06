@@ -1,4 +1,5 @@
 const fs = require("fs");
+const path = require("path");
 
 // Inspired by:
 // https://github.com/jinjor/elm-break-dom/tree/0fef8cea8c57841e32c878febca34cf25af664a2#appendix-hacky-patch-for-browserapplication
@@ -42,6 +43,10 @@ const replacements = [
   [
     /var nextNode = _VirtualDom_node\('body'\)\(_List_Nil\)\(((?:[^)]|\)(?!;))+)\);\n.+\n.+\n[ \t]*currNode = nextNode;/,
     `(${patcher.toString()})($1);`,
+  ],
+  [
+    /\nfunction _VirtualDom_organizeFacts\(factList\)\r?\n\{(\r?\n([\t ][^\n]+)?)+\r?\n\}/,
+    `${_VirtualDom_organizeFacts.toString()}`,
   ],
 ];
 
@@ -397,80 +402,65 @@ function morphChildrenKeyed(domNode, children) {
 
 function morphFacts(domNode, eventNode, facts) {
   var events = facts.a0;
-  delete facts.a0;
   var styles = facts.a1;
-  delete facts.a1;
+  var properties = facts.a2;
   var attributes = facts.a3;
-  delete facts.a3;
   var namespacedAttributes = facts.a4;
-  delete facts.a4;
+  var elm = weakMap.get(domNode);
 
-  if (events !== undefined) {
-    // TODO!
-    // Also needs to _remove_ listeners.
-    // Is this all that’s needed?
-    _VirtualDom_applyEvents(domNode, eventNode, events);
-  }
+  // TODO!
+  // Also needs to _remove_ listeners.
+  // Is this all that’s needed?
+  _VirtualDom_applyEvents(domNode, eventNode, events);
 
-  if (styles !== undefined) {
-    var domNodeStyle = domNode.style;
-    var saved = weakMap.get(domNode).style;
-    for (var key in styles) {
-      value = styles[key];
-      if (domNodeStyle[key] !== value) {
-        if (!saved.has(key)) {
-          saved.set(key, domNodeStyle.getPropertyValue(key));
-        }
-        domNodeStyle.setProperty(key, value);
+  var domNodeStyle = domNode.style;
+  var saved = elm.style;
+  for (var key in styles) {
+    value = styles[key];
+    if (domNodeStyle[key] !== value) {
+      if (!saved.has(key)) {
+        saved.set(key, domNodeStyle.getPropertyValue(key));
       }
-    }
-    saved.forEach(function (defaultValue, key) {
-      if (!(key in styles)) {
-        domNodeStyle.setProperty(key, defaultValue);
-        saved.delete(key);
-      }
-    });
-  }
-
-  if (attributes !== undefined) {
-    for (var key in attributes) {
-      var value = attributes[key];
-      if (domNode.getAttribute(key) !== value) {
-        domNode.setAttribute(key, value);
-      }
+      domNodeStyle.setProperty(key, value);
     }
   }
-  if (namespacedAttributes !== undefined) {
-    for (var key in namespacedAttributes) {
-      var pair = namespacedAttributes[key];
-      var namespace = pair.f;
-      var value = pair.o;
-      if (domNode.getAttributeNS(namespace, key) !== value) {
-        domNode.setAttributeNS(namespace, key, value);
-      }
+  saved.forEach(function (defaultValue, key) {
+    if (!(key in styles)) {
+      domNodeStyle.setProperty(key, defaultValue);
+      saved.delete(key);
+    }
+  });
+
+  for (var key in attributes) {
+    var value = attributes[key];
+    if (domNode.getAttribute(key) !== value) {
+      domNode.setAttribute(key, value);
+    }
+  }
+  for (var key in namespacedAttributes) {
+    var pair = namespacedAttributes[key];
+    var namespace = pair.f;
+    var value = pair.o;
+    if (domNode.getAttributeNS(namespace, key) !== value) {
+      domNode.setAttributeNS(namespace, key, value);
     }
   }
   for (var i = 0; i < domNode.attributes.length; i++) {
     var attr = domNode.attributes[i];
     if (attr.namespaceURI === null) {
-      if (!(attributes !== undefined && attr.name in attributes)) {
+      if (!(attr.name in attributes)) {
         domNode.removeAttribute(attr.name);
       }
     } else {
-      if (
-        !(
-          namespacedAttributes !== undefined &&
-          attr.name in namespacedAttributes
-        )
-      ) {
+      if (!(attr.name in namespacedAttributes)) {
         domNode.removeAttributeNS(attr.namespaceURI, attr.name);
       }
     }
   }
 
-  var saved = weakMap.get(domNode).properties;
-  for (var key in facts) {
-    value = facts[key];
+  saved = elm.properties;
+  for (var key in properties) {
+    value = properties[key];
     if (domNode[key] !== value) {
       if (!saved.has(key)) {
         saved.set(key, domNode[key]);
@@ -479,11 +469,34 @@ function morphFacts(domNode, eventNode, facts) {
     }
   }
   saved.forEach(function (defaultValue, key) {
-    if (!(key in facts)) {
+    if (!(key in properties)) {
       domNode[key] = defaultValue;
       saved.delete(key);
     }
   });
+}
+
+function _VirtualDom_organizeFacts(factList) {
+  for (
+    var facts = { a0: {}, a1: {}, a2: {}, a3: {}, a4: {} };
+    factList.b;
+    factList = factList.b // WHILE_CONS
+  ) {
+    var entry = factList.a;
+    var tag = entry.$;
+    var key = entry.n;
+    var value = entry.o;
+    var subFacts = facts[tag];
+    if (
+      (tag === "a2" && key === "className") ||
+      (tag === "a3" && key === "class")
+    ) {
+      _VirtualDom_addClass(subFacts, key, value);
+    } else {
+      subFacts[key] = value;
+    }
+  }
+  return facts;
 }
 
 function patch(code) {
