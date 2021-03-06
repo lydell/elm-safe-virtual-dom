@@ -270,12 +270,12 @@ function morph(domNode, vNode, eventNode) {
         elm.custom.render === render
       ) {
         var patch = diff(elm.custom.model, model);
-        newNode = patch(domNode);
+        newNode = patch === false ? domNode : patch(domNode);
       } else {
         newNode = render(model);
+        elm = emptyElmState();
       }
 
-      elm = elm === undefined ? emptyElmState() : elm;
       elm.custom = {
         render: render,
         model: model,
@@ -283,6 +283,15 @@ function morph(domNode, vNode, eventNode) {
       weakMap.set(newNode, elm);
       morphFacts(newNode, eventNode, facts);
       return newNode;
+    }
+
+    // Html.map
+    case 4: {
+      var tagger = vNode.j;
+      var actualVNode = vNode.k;
+      return morph(domNode, actualVNode, function (message, stopPropagation) {
+        return eventNode(tagger(message), stopPropagation);
+      });
     }
 
     // Html.Lazy.lazy etc
@@ -313,11 +322,8 @@ function morph(domNode, vNode, eventNode) {
       return newNode;
     }
 
-    default: {
-      var div = _VirtualDom_doc.createElement("div");
-      div.dataset.dollar = vNode.$;
-      return div;
-    }
+    default:
+      throw new Error("Unknown vNode.$: " + vNode.$);
   }
 }
 
