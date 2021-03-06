@@ -48,6 +48,22 @@ const replacements = [
     /\nfunction _VirtualDom_organizeFacts\(factList\)\r?\n\{(\r?\n([\t ][^\n]+)?)+\r?\n\}/,
     `${_VirtualDom_organizeFacts.toString()}`,
   ],
+  [
+    `function _VirtualDom_makeCallback(eventNode, initialHandler)`,
+    `function _VirtualDom_makeCallback(initialEventNode, initialHandler)`,
+  ],
+  [
+    `var handler = callback.q;`,
+    `var handler = callback.q; var eventNode = callback.r;`,
+  ],
+  [
+    `callback.q = initialHandler;`,
+    `callback.q = initialHandler; callback.r = initialEventNode;`,
+  ],
+  [
+    /var tagger;\s+var i;\s+while \(tagger = currentEventNode.j\)(\s+)\{(\r?\n|\1[\t ][^\n]+)+\1\}/,
+    "",
+  ],
 ];
 
 function patcher(body) {
@@ -423,6 +439,7 @@ function morphFacts(domNode, eventNode, facts) {
       var oldHandler = oldCallback.q;
       if (oldHandler.$ === handler.$) {
         oldCallback.q = handler;
+        oldCallback.r = eventNode;
         continue;
       }
       domNode.removeEventListener(eventName, oldCallback);
