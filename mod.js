@@ -94,6 +94,10 @@ var replacements = [
       _Morph_morphChildren,
       _Morph_morphChildrenKeyed,
       _Morph_morphFacts,
+      _Morph_morphEvents,
+      _Morph_morphStyles,
+      _Morph_morphProperties,
+      _Morph_morphAttributes,
     ]
       .map(function (i) {
         return i.toString();
@@ -528,30 +532,27 @@ function _Morph_morphChildrenKeyed(domNode, children, sendToApp) {
 
 function _Morph_morphFacts(domNode, facts, sendToApp) {
   var //
-    events = facts.a0,
-    styles = facts.a1,
-    properties = facts.a2,
-    attributes = facts.a3,
-    namespacedAttributes = facts.a4,
-    state = _Morph_weakMap.get(domNode),
-    attr,
+    state = _Morph_weakMap.get(domNode);
+
+  _Morph_morphEvents(domNode, state, facts.a0, sendToApp);
+  _Morph_morphStyles(domNode, state, facts.a1);
+  _Morph_morphProperties(domNode, state, facts.a2);
+  _Morph_morphAttributes(domNode, facts.a3, facts.a4);
+}
+
+function _Morph_morphEvents(domNode, state, events, sendToApp) {
+  var //
     callback,
-    domNodeStyle,
     eventName,
     handler,
-    i,
     key,
-    namespace,
     oldCallback,
-    oldHandler,
-    pair,
-    saved,
-    value;
+    oldHandler;
 
-  saved = state.eventFunctions;
   for (eventName in events) {
     handler = events[eventName];
     oldCallback = state.eventFunctions.get(eventName);
+
     if (oldCallback !== undefined) {
       oldHandler = oldCallback.q;
       if (oldHandler.$ === handler.$) {
@@ -561,7 +562,9 @@ function _Morph_morphFacts(domNode, facts, sendToApp) {
       }
       domNode.removeEventListener(eventName, oldCallback);
     }
+
     callback = _VirtualDom_makeCallback(sendToApp, handler);
+
     domNode.addEventListener(
       eventName,
       callback,
@@ -569,32 +572,72 @@ function _Morph_morphFacts(domNode, facts, sendToApp) {
         passive: $elm$virtual_dom$VirtualDom$toHandlerInt(handler) < 2,
       }
     );
-    saved.set(eventName, callback);
+
+    state.eventFunctions.set(eventName, callback);
   }
-  saved.forEach(function (oldCallback, eventName) {
+
+  state.eventFunctions.forEach(function (oldCallback, eventName) {
     if (!(eventName in events)) {
       domNode.removeEventListener(eventName, oldCallback);
-      saved.delete(key);
+      state.eventFunctions.delete(key);
     }
   });
+}
 
-  domNodeStyle = domNode.style;
-  saved = state.style;
+function _Morph_morphStyles(domNode, state, styles) {
+  var //
+    key,
+    value;
+
   for (key in styles) {
     value = styles[key];
-    if (domNodeStyle[key] !== value) {
-      if (!saved.has(key)) {
-        saved.set(key, domNodeStyle.getPropertyValue(key));
+    if (domNode.style[key] !== value) {
+      if (!state.style.has(key)) {
+        state.style.set(key, domNode.style.getPropertyValue(key));
       }
-      domNodeStyle.setProperty(key, value);
+      domNode.style.setProperty(key, value);
     }
   }
-  saved.forEach(function (defaultValue, key) {
+
+  state.style.forEach(function (defaultValue, key) {
     if (!(key in styles)) {
-      domNodeStyle.setProperty(key, defaultValue);
-      saved.delete(key);
+      domNode.style.setProperty(key, defaultValue);
+      state.style.delete(key);
     }
   });
+}
+
+function _Morph_morphProperties(domNode, state, properties) {
+  var //
+    key,
+    value;
+
+  for (key in properties) {
+    value = properties[key];
+    if (domNode[key] !== value) {
+      if (!state.properties.has(key)) {
+        state.properties.set(key, domNode[key]);
+      }
+      domNode[key] = value;
+    }
+  }
+
+  state.properties.forEach(function (defaultValue, key) {
+    if (!(key in properties)) {
+      domNode[key] = defaultValue;
+      state.properties.delete(key);
+    }
+  });
+}
+
+function _Morph_morphAttributes(domNode, attributes, namespacedAttributes) {
+  var //
+    attr,
+    i,
+    key,
+    namespace,
+    pair,
+    value;
 
   for (key in attributes) {
     value = attributes[key];
@@ -602,6 +645,7 @@ function _Morph_morphFacts(domNode, facts, sendToApp) {
       domNode.setAttribute(key, value);
     }
   }
+
   for (key in namespacedAttributes) {
     pair = namespacedAttributes[key];
     namespace = pair.f;
@@ -610,6 +654,7 @@ function _Morph_morphFacts(domNode, facts, sendToApp) {
       domNode.setAttributeNS(namespace, key, value);
     }
   }
+
   for (i = 0; i < domNode.attributes.length; i++) {
     attr = domNode.attributes[i];
     if (attr.namespaceURI === null) {
@@ -622,23 +667,6 @@ function _Morph_morphFacts(domNode, facts, sendToApp) {
       }
     }
   }
-
-  saved = state.properties;
-  for (key in properties) {
-    value = properties[key];
-    if (domNode[key] !== value) {
-      if (!saved.has(key)) {
-        saved.set(key, domNode[key]);
-      }
-      domNode[key] = value;
-    }
-  }
-  saved.forEach(function (defaultValue, key) {
-    if (!(key in properties)) {
-      domNode[key] = defaultValue;
-      saved.delete(key);
-    }
-  });
 }
 
 function _VirtualDom_organizeFacts(factList) {
