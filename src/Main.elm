@@ -95,7 +95,7 @@ view model =
             , div [ Html.Attributes.class "klass" ] [ text ("div: " ++ String.fromInt model.state) ]
             , Html.Keyed.node "sektion" [] [ ( "key1", text ("Nyckel: " ++ String.fromInt model.state) ), ( "key2", div [] [ text "key2" ] ) ]
             , Html.Lazy.lazy viewNum model.state
-            , map identity (Html.button [ onClick (Log 1), onClick (Log 2) ] [ text ("karta: " ++ String.fromInt model.state) ])
+            , map Log (Html.button [ onClick 1, onClick 1 |> Html.Attributes.map ((+) 1) ] [ text ("karta: " ++ String.fromInt model.state) ])
             , Markdown.toHtml [ Html.Attributes.id "my-id" ] ("nedåt: " ++ String.fromInt model.state)
             , Svg.svg [ Svg.Attributes.xmlLang "en-US" ] []
             , Html.button
