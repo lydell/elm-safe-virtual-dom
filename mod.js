@@ -73,7 +73,7 @@ var replacements = [
       observe,
       nodeIndex,
       morph,
-      emptyElmState,
+      emptyState,
       morphChildren,
       morphChildrenKeyed,
       morphFacts,
@@ -262,7 +262,7 @@ function morph(domNode, vNode, eventNode) {
     childMorpher,
     children,
     diff,
-    elm,
+    state,
     facts,
     i,
     lazyRefs,
@@ -321,7 +321,7 @@ function morph(domNode, vNode, eventNode) {
       }
 
       newNode = _VirtualDom_doc.createElementNS(namespaceURI, nodeName);
-      _VirtualDom_weakMap.set(newNode, emptyElmState());
+      _VirtualDom_weakMap.set(newNode, emptyState());
 
       if (_VirtualDom_divertHrefToApp && nodeName === "a") {
         newNode.addEventListener("click", _VirtualDom_divertHrefToApp(newNode));
@@ -343,23 +343,23 @@ function morph(domNode, vNode, eventNode) {
 
       if (
         domNode !== undefined &&
-        (elm = _VirtualDom_weakMap.get(domNode)) !== undefined &&
-        elm !== undefined &&
-        elm.custom !== undefined &&
-        elm.custom.render === render
+        (state = _VirtualDom_weakMap.get(domNode)) !== undefined &&
+        state !== undefined &&
+        state.custom !== undefined &&
+        state.custom.render === render
       ) {
-        patch = diff(elm.custom.model, model);
+        patch = diff(state.custom.model, model);
         newNode = patch === false ? domNode : patch(domNode);
       } else {
         newNode = render(model);
-        elm = emptyElmState();
+        state = emptyState();
       }
 
-      elm.custom = {
+      state.custom = {
         render: render,
         model: model,
       };
-      _VirtualDom_weakMap.set(newNode, elm);
+      _VirtualDom_weakMap.set(newNode, state);
       morphFacts(newNode, eventNode, facts);
       return newNode;
     }
@@ -381,10 +381,10 @@ function morph(domNode, vNode, eventNode) {
 
       if (
         domNode !== undefined &&
-        (elm = _VirtualDom_weakMap.get(domNode)) !== undefined &&
-        elm.lazy !== undefined
+        (state = _VirtualDom_weakMap.get(domNode)) !== undefined &&
+        state.lazy !== undefined
       ) {
-        lazyRefs = elm.lazy.refs;
+        lazyRefs = state.lazy.refs;
         i = lazyRefs.length;
         same = i === refs.length;
         while (same && i-- > 0) {
@@ -392,7 +392,7 @@ function morph(domNode, vNode, eventNode) {
         }
       }
 
-      actualVNode = same ? elm.lazy.vNode : thunk();
+      actualVNode = same ? state.lazy.vNode : thunk();
       newNode = morph(domNode, actualVNode, eventNode);
       _VirtualDom_weakMap.get(newNode).lazy = {
         refs: refs,
@@ -406,7 +406,7 @@ function morph(domNode, vNode, eventNode) {
   }
 }
 
-function emptyElmState() {
+function emptyState() {
   return {
     key: undefined,
     eventFunctions: new Map(),
@@ -447,7 +447,7 @@ function morphChildrenKeyed(domNode, children) {
     map = new Map(),
     previousDomNode = null,
     child,
-    elm,
+    state,
     i,
     key,
     next,
@@ -456,8 +456,8 @@ function morphChildrenKeyed(domNode, children) {
 
   for (i = domNode.childNodes.length - 1; i >= 0; i--) {
     child = domNode.childNodes[i];
-    elm = _VirtualDom_weakMap.get(child);
-    key = elm !== undefined ? elm.key : undefined;
+    state = _VirtualDom_weakMap.get(child);
+    key = state !== undefined ? state.key : undefined;
     if (typeof key === "string" && !map.has(key)) {
       map.set(key, child);
     } else {
@@ -503,7 +503,7 @@ function morphFacts(domNode, eventNode, facts) {
     properties = facts.a2,
     attributes = facts.a3,
     namespacedAttributes = facts.a4,
-    elm = _VirtualDom_weakMap.get(domNode),
+    state = _VirtualDom_weakMap.get(domNode),
     attr,
     callback,
     domNodeStyle,
@@ -518,10 +518,10 @@ function morphFacts(domNode, eventNode, facts) {
     saved,
     value;
 
-  saved = elm.eventFunctions;
+  saved = state.eventFunctions;
   for (eventName in events) {
     handler = events[eventName];
-    oldCallback = elm.eventFunctions.get(eventName);
+    oldCallback = state.eventFunctions.get(eventName);
     if (oldCallback !== undefined) {
       oldHandler = oldCallback.q;
       if (oldHandler.$ === handler.$) {
@@ -549,7 +549,7 @@ function morphFacts(domNode, eventNode, facts) {
   });
 
   domNodeStyle = domNode.style;
-  saved = elm.style;
+  saved = state.style;
   for (key in styles) {
     value = styles[key];
     if (domNodeStyle[key] !== value) {
@@ -593,7 +593,7 @@ function morphFacts(domNode, eventNode, facts) {
     }
   }
 
-  saved = elm.properties;
+  saved = state.properties;
   for (key in properties) {
     value = properties[key];
     if (domNode[key] !== value) {
