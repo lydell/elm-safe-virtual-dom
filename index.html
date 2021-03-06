@@ -7,6 +7,7 @@
     <title>DOM</title>
   </head>
   <body>
+    <div id="main"></div>
     <button id="reorder">Ändra ordning</button>
     <button id="steal">Stjäl</button>
     <button id="insert">Ny</button>
@@ -69,14 +70,20 @@
           )
         );
       };
-      HTMLFontElement.prototype.replaceData = function replaceData(
-        _1,
-        _2,
-        text
-      ) {
-        this.parentNode.replaceChild(document.createTextNode(text), this);
-      };
-      Elm.Main.init();
+      // HTMLFontElement.prototype.replaceData = function replaceData(
+      //   _1,
+      //   _2,
+      //   text
+      // ) {
+      //   this.parentNode.replaceChild(document.createTextNode(text), this);
+      // };
+      if (Elm.Main) {
+        Elm.Main.init();
+      } else if (Elm.Sandbox) {
+        Elm.Sandbox.init({ node: document.getElementById("main") });
+      } else {
+        throw new Error("No known Elm module", Elm);
+      }
       setTimeout(() => {
         document.body.appendChild(document.createElement("hr"));
       });

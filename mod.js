@@ -18,6 +18,7 @@
 // https://github.com/elm/browser/blob/1d28cd625b3ce07be6dfad51660bea6de2c905f2/src/Elm/Kernel/Debugger.js
 // So there should be up to 2 matches for every replacement.
 var replacements = [
+  // ### _Browser_document
   // Instead of keeping track of only the `<body>` element, keep track of all
   // elements directly inside `<body>` that Elm renders. `domNodes` and
   // `vNodes` (virtual DOM nodes) are parallel lists: They always have the
@@ -42,12 +43,25 @@ var replacements = [
   // every Elm element inside `<body>`.
   [
     /var nextNode = _VirtualDom_node\('body'\)\(_List_Nil\)\(((?:[^)]|\)(?!;))+)\);\n.+\n.+\n[ \t]*currNode = nextNode;/,
-    "_Morph_patchBody($1, sendToApp, mutationObserver, domNodes, domNodesToRemove, bounds);",
+    "_Morph_morphBody($1, sendToApp, mutationObserver, domNodes, domNodesToRemove, bounds);",
   ],
+
+  // ### _Browser_element
+  ["var currNode = _VirtualDom_virtualize(domNode);", ""],
+  ["var patches = _VirtualDom_diff(currNode, nextNode);", ""],
+  [
+    "domNode = _VirtualDom_applyPatches(domNode, currNode, patches, sendToApp);",
+    "domNode = _Morph_morphRootNode(domNode, nextNode, sendToApp);",
+  ],
+  ["currNode = nextNode;", ""],
+
+  // ### _VirtualDom_organizeFacts
   [
     /function _VirtualDom_organizeFacts\(factList\)\r?\n\{(\r?\n([\t ][^\n]+)?)+\r?\n\}/,
     _VirtualDom_organizeFacts.toString(),
   ],
+
+  // ### _VirtualDom_makeCallback
   [
     "function _VirtualDom_makeCallback(eventNode, initialHandler)",
     "function _VirtualDom_makeCallback(initialEventNode, initialHandler)",
@@ -64,12 +78,15 @@ var replacements = [
     /var tagger;\s+var i;\s+while \(tagger = currentEventNode.j\)(\s+)\{(\r?\n|\1[\t ][^\n]+)+\1\}/,
     "",
   ],
+
+  // ### Insert functions
   [
     "var _VirtualDom_divertHrefToApp;",
     [
       "var _VirtualDom_divertHrefToApp;",
       "var _Morph_weakMap = new WeakMap();",
-      _Morph_patchBody,
+      _Morph_morphRootNode,
+      _Morph_morphBody,
       _Morph_observe,
       _Morph_nodeIndex,
       _Morph_emptyState,
@@ -83,14 +100,24 @@ var replacements = [
       })
       .join("\n\n"),
   ],
-  // https://github.com/elm/virtual-dom/issues/168
+
+  // ### https://github.com/elm/virtual-dom/issues/168
   [
     /var _VirtualDom_nodeNS = F2\(function\(namespace, tag\)\r?\n\{/,
     "$& tag = _VirtualDom_noScript(tag);",
   ],
 ];
 
-function _Morph_patchBody(
+function _Morph_morphRootNode(domNode, nextNode, sendToApp) {
+  var newNode = _Morph_morphNode(domNode, nextNode, sendToApp);
+  if (newNode !== domNode && domNode.parentNode !== null) {
+    _Morph_weakMap.delete(domNode);
+    domNode.parentNode.replaceChild(newNode, domNode);
+  }
+  return newNode;
+}
+
+function _Morph_morphBody(
   body,
   sendToApp,
   mutationObserver,
@@ -171,8 +198,6 @@ function _Morph_patchBody(
       );
     }
 
-    // patches = _VirtualDom_diff(vNode, nextVNode);
-    // nextDomNode = _VirtualDom_applyPatches(nextDomNode, vNode, patches, sendToApp);
     domNodes[index] = nextDomNode;
     previousDomNode = nextDomNode;
 
@@ -256,7 +281,7 @@ function _Morph_nodeIndex(node) {
   return index;
 }
 
-function _Morph_morphNode(domNode, vNode, eventNode) {
+function _Morph_morphNode(domNode, vNode, sendToApp) {
   var //
     actualVNode,
     childMorpher,
@@ -316,8 +341,8 @@ function _Morph_morphNode(domNode, vNode, eventNode) {
         domNode.nodeName === nodeName &&
         _Morph_weakMap.has(domNode)
       ) {
-        _Morph_morphFacts(domNode, eventNode, facts);
-        childMorpher(domNode, children);
+        _Morph_morphFacts(domNode, facts, sendToApp);
+        childMorpher(domNode, children, sendToApp);
         return domNode;
       }
 
@@ -328,8 +353,8 @@ function _Morph_morphNode(domNode, vNode, eventNode) {
         newNode.addEventListener("click", _VirtualDom_divertHrefToApp(newNode));
       }
 
-      _Morph_morphFacts(newNode, eventNode, facts);
-      childMorpher(newNode, children);
+      _Morph_morphFacts(newNode, facts, sendToApp);
+      childMorpher(newNode, children, sendToApp);
 
       return newNode;
     }
@@ -361,7 +386,7 @@ function _Morph_morphNode(domNode, vNode, eventNode) {
         model: model,
       };
       _Morph_weakMap.set(newNode, state);
-      _Morph_morphFacts(newNode, eventNode, facts);
+      _Morph_morphFacts(newNode, facts, sendToApp);
       return newNode;
     }
 
@@ -373,7 +398,7 @@ function _Morph_morphNode(domNode, vNode, eventNode) {
         domNode,
         actualVNode,
         function (message, stopPropagation) {
-          return eventNode(tagger(message), stopPropagation);
+          return sendToApp(tagger(message), stopPropagation);
         }
       );
     }
@@ -398,7 +423,7 @@ function _Morph_morphNode(domNode, vNode, eventNode) {
       }
 
       actualVNode = same ? state.lazy.vNode : thunk();
-      newNode = _Morph_morphNode(domNode, actualVNode, eventNode);
+      newNode = _Morph_morphNode(domNode, actualVNode, sendToApp);
       _Morph_weakMap.get(newNode).lazy = {
         refs: refs,
         vNode: actualVNode,
@@ -422,7 +447,7 @@ function _Morph_emptyState() {
   };
 }
 
-function _Morph_morphChildren(domNode, children) {
+function _Morph_morphChildren(domNode, children, sendToApp) {
   var //
     numChildNodes = domNode.childNodes.length,
     i,
@@ -433,12 +458,12 @@ function _Morph_morphChildren(domNode, children) {
   for (i = 0; i < children.length; i++) {
     if (i < numChildNodes) {
       previous = domNode.childNodes[i];
-      next = _Morph_morphNode(previous, children[i]);
+      next = _Morph_morphNode(previous, children[i], sendToApp);
       if (previous !== next) {
         domNode.replaceChild(next, previous);
       }
     } else {
-      domNode.appendChild(_Morph_morphNode(undefined, children[i]));
+      domNode.appendChild(_Morph_morphNode(undefined, children[i], sendToApp));
     }
   }
   for (j = numChildNodes - i; j > 0; j--) {
@@ -447,7 +472,7 @@ function _Morph_morphChildren(domNode, children) {
   }
 }
 
-function _Morph_morphChildrenKeyed(domNode, children) {
+function _Morph_morphChildrenKeyed(domNode, children, sendToApp) {
   var //
     map = new Map(),
     previousDomNode = null,
@@ -477,7 +502,7 @@ function _Morph_morphChildrenKeyed(domNode, children) {
     node = child.b;
     previous = map.get(key);
     if (previous !== undefined) {
-      next = _Morph_morphNode(previous, node);
+      next = _Morph_morphNode(previous, node, sendToApp);
       map.delete(key);
       if (previous !== next) {
         _Morph_weakMap.get(next).key = key;
@@ -488,7 +513,7 @@ function _Morph_morphChildrenKeyed(domNode, children) {
         domNode.insertBefore(next, previousDomNode);
       }
     } else {
-      next = _Morph_morphNode(undefined, node);
+      next = _Morph_morphNode(undefined, node, sendToApp);
       _Morph_weakMap.get(next).key = key;
       domNode.insertBefore(next, previousDomNode);
     }
@@ -501,7 +526,7 @@ function _Morph_morphChildrenKeyed(domNode, children) {
   });
 }
 
-function _Morph_morphFacts(domNode, eventNode, facts) {
+function _Morph_morphFacts(domNode, facts, sendToApp) {
   var //
     events = facts.a0,
     styles = facts.a1,
@@ -531,12 +556,12 @@ function _Morph_morphFacts(domNode, eventNode, facts) {
       oldHandler = oldCallback.q;
       if (oldHandler.$ === handler.$) {
         oldCallback.q = handler;
-        oldCallback.r = eventNode;
+        oldCallback.r = sendToApp;
         continue;
       }
       domNode.removeEventListener(eventName, oldCallback);
     }
-    callback = _VirtualDom_makeCallback(eventNode, handler);
+    callback = _VirtualDom_makeCallback(sendToApp, handler);
     domNode.addEventListener(
       eventName,
       callback,
