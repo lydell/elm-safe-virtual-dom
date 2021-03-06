@@ -1,11 +1,11 @@
 /* global
   _Json_unwrap,
+  _Morph_weakMap,
   _VirtualDom_addClass,
   _VirtualDom_divertHrefToApp,
   _VirtualDom_doc,
   _VirtualDom_makeCallback,
   _VirtualDom_passiveSupported,
-  _VirtualDom_weakMap,
   $elm$virtual_dom$VirtualDom$toHandlerInt,
   Map,
 */
@@ -33,16 +33,16 @@ var replacements = [
   ],
   // `currNode` used to be the virtual DOM node for `bodyNode`. It’s not
   // needed because of the above. Remove it and instead introduce a mutation
-  // observer (see the `observe` function) and a `nodeIndex` helper function.
+  // observer (see the `_Morph_observe` function) and a `_Morph_nodeIndex` helper function.
   [
     "var currNode = _VirtualDom_virtualize(bodyNode);",
-    "var mutationObserver = new MutationObserver(function (records) { observe(records, domNodesToRemove, bounds); });",
+    "var mutationObserver = new MutationObserver(function (records) { _Morph_observe(records, domNodesToRemove, bounds); });",
   ],
   // On rerender, instead of patching the whole `<body>` element, instead patch
   // every Elm element inside `<body>`.
   [
     /var nextNode = _VirtualDom_node\('body'\)\(_List_Nil\)\(((?:[^)]|\)(?!;))+)\);\n.+\n.+\n[ \t]*currNode = nextNode;/,
-    "patcher($1, sendToApp, mutationObserver, domNodes, domNodesToRemove, bounds);",
+    "_Morph_patchBody($1, sendToApp, mutationObserver, domNodes, domNodesToRemove, bounds);",
   ],
   [
     /function _VirtualDom_organizeFacts\(factList\)\r?\n\{(\r?\n([\t ][^\n]+)?)+\r?\n\}/,
@@ -68,15 +68,15 @@ var replacements = [
     "var _VirtualDom_divertHrefToApp;",
     [
       "var _VirtualDom_divertHrefToApp;",
-      "var _VirtualDom_weakMap = new WeakMap();",
-      patcher,
-      observe,
-      nodeIndex,
-      morph,
-      emptyState,
-      morphChildren,
-      morphChildrenKeyed,
-      morphFacts,
+      "var _Morph_weakMap = new WeakMap();",
+      _Morph_patchBody,
+      _Morph_observe,
+      _Morph_nodeIndex,
+      _Morph_emptyState,
+      _Morph_morphNode,
+      _Morph_morphChildren,
+      _Morph_morphChildrenKeyed,
+      _Morph_morphFacts,
     ]
       .map(function (i) {
         return i.toString();
@@ -90,7 +90,7 @@ var replacements = [
   ],
 ];
 
-function patcher(
+function _Morph_patchBody(
   body,
   sendToApp,
   mutationObserver,
@@ -143,14 +143,14 @@ function patcher(
     }
 
     // Patch and update state.
-    nextDomNode = morph(domNode, nextVNode, sendToApp);
+    nextDomNode = _Morph_morphNode(domNode, nextVNode, sendToApp);
 
     if (
       domNode !== undefined &&
       domNode !== nextDomNode &&
       domNode.parentNode === _VirtualDom_doc.body
     ) {
-      _VirtualDom_weakMap.delete(domNode);
+      _Morph_weakMap.delete(domNode);
       domNode.parentNode.removeChild(domNode);
       exists = false;
     }
@@ -177,11 +177,11 @@ function patcher(
     previousDomNode = nextDomNode;
 
     if (index === 0) {
-      bounds.lower = nodeIndex(nextDomNode);
+      bounds.lower = _Morph_nodeIndex(nextDomNode);
     }
   }
 
-  bounds.upper = nodeIndex(nextDomNode);
+  bounds.upper = _Morph_nodeIndex(nextDomNode);
 
   // If the previous render had more children in `<body>` than now, remove the
   // excess elements.
@@ -190,7 +190,7 @@ function patcher(
     for (; index < domNodes.length; index++) {
       domNode = domNodes[index];
       if (domNode.parentNode !== null) {
-        _VirtualDom_weakMap.delete(domNode);
+        _Morph_weakMap.delete(domNode);
         domNode.parentNode.removeChild(domNode);
       }
     }
@@ -202,7 +202,7 @@ function patcher(
   mutationObserver.observe(_VirtualDom_doc.body, { childList: true });
 }
 
-function observe(records, domNodesToRemove, bounds) {
+function _Morph_observe(records, domNodesToRemove, bounds) {
   var //
     found = false,
     i,
@@ -216,7 +216,7 @@ function observe(records, domNodesToRemove, bounds) {
     record = records[i];
     for (j = 0; j < record.removedNodes.length; j++) {
       node = record.removedNodes[j];
-      if (_VirtualDom_weakMap.has(node)) {
+      if (_Morph_weakMap.has(node)) {
         found = true;
         break;
       }
@@ -234,13 +234,13 @@ function observe(records, domNodesToRemove, bounds) {
         node = record.addedNodes[j];
         // If one of Elm’s elements has been inserted, redraw it completely to
         // protect against reordering done by a script or extension.
-        if (_VirtualDom_weakMap.has(node)) {
+        if (_Morph_weakMap.has(node)) {
           domNodesToRemove.push(node);
         } else {
           // But don’t apply this to nodes before or after Elm’s range of nodes.
           // This way we don’t remove the two `<div>`s inserted by Google
           // Translate. This is why we track `lower` and `upper`.
-          index = nodeIndex(node);
+          index = _Morph_nodeIndex(node);
           if (index >= bounds.lower && index <= bounds.upper) {
             domNodesToRemove.push(node);
           }
@@ -250,13 +250,13 @@ function observe(records, domNodesToRemove, bounds) {
   }
 }
 
-function nodeIndex(node) {
+function _Morph_nodeIndex(node) {
   // https://stackoverflow.com/a/5913984/2010616
   for (var index = 0; (node = node.previousSibling) !== null; index++);
   return index;
 }
 
-function morph(domNode, vNode, eventNode) {
+function _Morph_morphNode(domNode, vNode, eventNode) {
   var //
     actualVNode,
     childMorpher,
@@ -287,7 +287,7 @@ function morph(domNode, vNode, eventNode) {
       if (
         domNode !== undefined &&
         domNode.nodeType === 3 &&
-        _VirtualDom_weakMap.has(domNode)
+        _Morph_weakMap.has(domNode)
       ) {
         if (domNode.data !== text) {
           domNode.data = text;
@@ -295,14 +295,15 @@ function morph(domNode, vNode, eventNode) {
         return domNode;
       }
       newNode = _VirtualDom_doc.createTextNode(text);
-      _VirtualDom_weakMap.set(newNode, { key: undefined });
+      _Morph_weakMap.set(newNode, { key: undefined });
       return newNode;
     }
 
     // Html.div etc
     case 1:
     case 2: {
-      childMorpher = vNode.$ === 1 ? morphChildren : morphChildrenKeyed;
+      childMorpher =
+        vNode.$ === 1 ? _Morph_morphChildren : _Morph_morphChildrenKeyed;
       nodeName = vNode.c;
       namespaceURI =
         vNode.f === undefined ? "http://www.w3.org/1999/xhtml" : vNode.f;
@@ -313,21 +314,21 @@ function morph(domNode, vNode, eventNode) {
         domNode !== undefined &&
         domNode.namespaceURI === namespaceURI &&
         domNode.nodeName === nodeName &&
-        _VirtualDom_weakMap.has(domNode)
+        _Morph_weakMap.has(domNode)
       ) {
-        morphFacts(domNode, eventNode, facts);
+        _Morph_morphFacts(domNode, eventNode, facts);
         childMorpher(domNode, children);
         return domNode;
       }
 
       newNode = _VirtualDom_doc.createElementNS(namespaceURI, nodeName);
-      _VirtualDom_weakMap.set(newNode, emptyState());
+      _Morph_weakMap.set(newNode, _Morph_emptyState());
 
       if (_VirtualDom_divertHrefToApp && nodeName === "a") {
         newNode.addEventListener("click", _VirtualDom_divertHrefToApp(newNode));
       }
 
-      morphFacts(newNode, eventNode, facts);
+      _Morph_morphFacts(newNode, eventNode, facts);
       childMorpher(newNode, children);
 
       return newNode;
@@ -343,7 +344,7 @@ function morph(domNode, vNode, eventNode) {
 
       if (
         domNode !== undefined &&
-        (state = _VirtualDom_weakMap.get(domNode)) !== undefined &&
+        (state = _Morph_weakMap.get(domNode)) !== undefined &&
         state !== undefined &&
         state.custom !== undefined &&
         state.custom.render === render
@@ -352,15 +353,15 @@ function morph(domNode, vNode, eventNode) {
         newNode = patch === false ? domNode : patch(domNode);
       } else {
         newNode = render(model);
-        state = emptyState();
+        state = _Morph_emptyState();
       }
 
       state.custom = {
         render: render,
         model: model,
       };
-      _VirtualDom_weakMap.set(newNode, state);
-      morphFacts(newNode, eventNode, facts);
+      _Morph_weakMap.set(newNode, state);
+      _Morph_morphFacts(newNode, eventNode, facts);
       return newNode;
     }
 
@@ -368,9 +369,13 @@ function morph(domNode, vNode, eventNode) {
     case 4: {
       tagger = vNode.j;
       actualVNode = vNode.k;
-      return morph(domNode, actualVNode, function (message, stopPropagation) {
-        return eventNode(tagger(message), stopPropagation);
-      });
+      return _Morph_morphNode(
+        domNode,
+        actualVNode,
+        function (message, stopPropagation) {
+          return eventNode(tagger(message), stopPropagation);
+        }
+      );
     }
 
     // Html.Lazy.lazy etc
@@ -381,7 +386,7 @@ function morph(domNode, vNode, eventNode) {
 
       if (
         domNode !== undefined &&
-        (state = _VirtualDom_weakMap.get(domNode)) !== undefined &&
+        (state = _Morph_weakMap.get(domNode)) !== undefined &&
         state.lazy !== undefined
       ) {
         lazyRefs = state.lazy.refs;
@@ -393,8 +398,8 @@ function morph(domNode, vNode, eventNode) {
       }
 
       actualVNode = same ? state.lazy.vNode : thunk();
-      newNode = morph(domNode, actualVNode, eventNode);
-      _VirtualDom_weakMap.get(newNode).lazy = {
+      newNode = _Morph_morphNode(domNode, actualVNode, eventNode);
+      _Morph_weakMap.get(newNode).lazy = {
         refs: refs,
         vNode: actualVNode,
       };
@@ -406,7 +411,7 @@ function morph(domNode, vNode, eventNode) {
   }
 }
 
-function emptyState() {
+function _Morph_emptyState() {
   return {
     key: undefined,
     eventFunctions: new Map(),
@@ -417,7 +422,7 @@ function emptyState() {
   };
 }
 
-function morphChildren(domNode, children) {
+function _Morph_morphChildren(domNode, children) {
   var //
     numChildNodes = domNode.childNodes.length,
     i,
@@ -428,21 +433,21 @@ function morphChildren(domNode, children) {
   for (i = 0; i < children.length; i++) {
     if (i < numChildNodes) {
       previous = domNode.childNodes[i];
-      next = morph(previous, children[i]);
+      next = _Morph_morphNode(previous, children[i]);
       if (previous !== next) {
         domNode.replaceChild(next, previous);
       }
     } else {
-      domNode.appendChild(morph(undefined, children[i]));
+      domNode.appendChild(_Morph_morphNode(undefined, children[i]));
     }
   }
   for (j = numChildNodes - i; j > 0; j--) {
-    _VirtualDom_weakMap.delete(domNode.lastChild);
+    _Morph_weakMap.delete(domNode.lastChild);
     domNode.removeChild(domNode.lastChild);
   }
 }
 
-function morphChildrenKeyed(domNode, children) {
+function _Morph_morphChildrenKeyed(domNode, children) {
   var //
     map = new Map(),
     previousDomNode = null,
@@ -456,12 +461,12 @@ function morphChildrenKeyed(domNode, children) {
 
   for (i = domNode.childNodes.length - 1; i >= 0; i--) {
     child = domNode.childNodes[i];
-    state = _VirtualDom_weakMap.get(child);
+    state = _Morph_weakMap.get(child);
     key = state !== undefined ? state.key : undefined;
     if (typeof key === "string" && !map.has(key)) {
       map.set(key, child);
     } else {
-      _VirtualDom_weakMap.delete(child);
+      _Morph_weakMap.delete(child);
       domNode.removeChild(child);
     }
   }
@@ -472,38 +477,38 @@ function morphChildrenKeyed(domNode, children) {
     node = child.b;
     previous = map.get(key);
     if (previous !== undefined) {
-      next = morph(previous, node);
+      next = _Morph_morphNode(previous, node);
       map.delete(key);
       if (previous !== next) {
-        _VirtualDom_weakMap.get(next).key = key;
-        _VirtualDom_weakMap.delete(previous);
+        _Morph_weakMap.get(next).key = key;
+        _Morph_weakMap.delete(previous);
         domNode.removeChild(previous);
         domNode.insertBefore(next, previousDomNode);
       } else if (next.previousSibling !== previousDomNode) {
         domNode.insertBefore(next, previousDomNode);
       }
     } else {
-      next = morph(undefined, node);
-      _VirtualDom_weakMap.get(next).key = key;
+      next = _Morph_morphNode(undefined, node);
+      _Morph_weakMap.get(next).key = key;
       domNode.insertBefore(next, previousDomNode);
     }
     previousDomNode = previous;
   }
 
   map.forEach(function (child) {
-    _VirtualDom_weakMap.delete(child);
+    _Morph_weakMap.delete(child);
     domNode.removeChild(child);
   });
 }
 
-function morphFacts(domNode, eventNode, facts) {
+function _Morph_morphFacts(domNode, eventNode, facts) {
   var //
     events = facts.a0,
     styles = facts.a1,
     properties = facts.a2,
     attributes = facts.a3,
     namespacedAttributes = facts.a4,
-    state = _VirtualDom_weakMap.get(domNode),
+    state = _Morph_weakMap.get(domNode),
     attr,
     callback,
     domNodeStyle,
@@ -647,7 +652,7 @@ function _VirtualDom_organizeFacts(factList) {
 var fs = require("fs"),
   path = require("path");
 
-function patch(code) {
+function runReplacements(code) {
   return replacements.reduce(strictReplace, code);
 }
 
@@ -698,4 +703,4 @@ function overwrite(file, transform) {
   fs.writeFileSync(file, transform(fs.readFileSync(file, "utf8")));
 }
 
-overwrite(process.argv[2], patch);
+overwrite(process.argv[2], runReplacements);
