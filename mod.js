@@ -516,7 +516,7 @@ function _VirtualDom_organizeFacts(factList) {
     var entry = factList.a;
     var tag = entry.$;
     var key = entry.n;
-    var value = entry.o;
+    var value = tag === "a2" ? _Json_unwrap(entry.o) : entry.o;
     var subFacts = facts[tag];
     if (
       (tag === "a2" && key === "className") ||
