@@ -27,16 +27,7 @@ const replacements = [
   // observer (see the `observe` function) and a `nodeIndex` helper function.
   [
     `var currNode = _VirtualDom_virtualize(bodyNode);`,
-    `
-    var mutationObserver = new MutationObserver(${observe.toString()});
-    var weakMap = new WeakMap();
-    ${nodeIndex.toString()};
-    ${morph.toString()};
-    ${emptyElmState.toString()};
-    ${morphChildren.toString()};
-    ${morphChildrenKeyed.toString()};
-    ${morphFacts.toString()};
-    `,
+    `var mutationObserver = new MutationObserver(${observe.toString()});`,
   ],
   // On rerender, instead of patching the whole `<body>` element, instead patch
   // every Elm element inside `<body>`.
@@ -63,6 +54,21 @@ const replacements = [
   [
     /var tagger;\s+var i;\s+while \(tagger = currentEventNode.j\)(\s+)\{(\r?\n|\1[\t ][^\n]+)+\1\}/,
     "",
+  ],
+  [
+    `var _VirtualDom_divertHrefToApp;`,
+    [
+      `var _VirtualDom_divertHrefToApp;`,
+      `var _VirtualDom_weakMap = new WeakMap();`,
+      nodeIndex,
+      morph,
+      emptyElmState,
+      morphChildren,
+      morphChildrenKeyed,
+      morphFacts,
+    ]
+      .map((i) => i.toString())
+      .join("\n\n"),
   ],
   // https://github.com/elm/virtual-dom/issues/168
   [
@@ -116,7 +122,7 @@ function patcher(body) {
       domNode !== nextDomNode &&
       domNode.parentNode === _VirtualDom_doc.body
     ) {
-      weakMap.delete(domNode);
+      _VirtualDom_weakMap.delete(domNode);
       domNode.parentNode.removeChild(domNode);
       exists = false;
     }
@@ -156,7 +162,7 @@ function patcher(body) {
     for (; index < domNodes.length; index++) {
       domNode = domNodes[index];
       if (domNode.parentNode !== null) {
-        weakMap.delete(domNode);
+        _VirtualDom_weakMap.delete(domNode);
         domNode.parentNode.removeChild(domNode);
       }
     }
@@ -178,7 +184,7 @@ function observe(records) {
     record = records[i];
     for (j = 0; j < record.removedNodes.length; j++) {
       node = record.removedNodes[j];
-      if (weakMap.has(node)) {
+      if (_VirtualDom_weakMap.has(node)) {
         found = true;
         break;
       }
@@ -196,7 +202,7 @@ function observe(records) {
         node = record.addedNodes[j];
         // If one of Elm’s elements has been inserted, redraw it completely to
         // protect against reordering done by a script or extension.
-        if (weakMap.has(node)) {
+        if (_VirtualDom_weakMap.has(node)) {
           domNodesToRemove.push(node);
         } else {
           // But don’t apply this to nodes before or after Elm’s range of nodes.
@@ -229,7 +235,7 @@ function morph(domNode, vNode, eventNode) {
       if (
         domNode !== undefined &&
         domNode.nodeType === 3 &&
-        weakMap.has(domNode)
+        _VirtualDom_weakMap.has(domNode)
       ) {
         if (domNode.data !== text) {
           domNode.data = text;
@@ -237,7 +243,7 @@ function morph(domNode, vNode, eventNode) {
         return domNode;
       }
       var newNode = _VirtualDom_doc.createTextNode(text);
-      weakMap.set(newNode, { key: undefined });
+      _VirtualDom_weakMap.set(newNode, { key: undefined });
       return newNode;
     }
 
@@ -255,7 +261,7 @@ function morph(domNode, vNode, eventNode) {
         domNode !== undefined &&
         domNode.namespaceURI === namespaceURI &&
         domNode.nodeName === nodeName &&
-        weakMap.has(domNode)
+        _VirtualDom_weakMap.has(domNode)
       ) {
         morphFacts(domNode, eventNode, facts);
         childMorpher(domNode, children);
@@ -263,7 +269,7 @@ function morph(domNode, vNode, eventNode) {
       }
 
       var newNode = _VirtualDom_doc.createElementNS(namespaceURI, nodeName);
-      weakMap.set(newNode, emptyElmState());
+      _VirtualDom_weakMap.set(newNode, emptyElmState());
 
       if (_VirtualDom_divertHrefToApp && nodeName === "a") {
         newNode.addEventListener("click", _VirtualDom_divertHrefToApp(newNode));
@@ -285,7 +291,7 @@ function morph(domNode, vNode, eventNode) {
 
       if (
         domNode !== undefined &&
-        (elm = weakMap.get(domNode)) !== undefined &&
+        (elm = _VirtualDom_weakMap.get(domNode)) !== undefined &&
         elm !== undefined &&
         elm.custom !== undefined &&
         elm.custom.render === render
@@ -301,7 +307,7 @@ function morph(domNode, vNode, eventNode) {
         render: render,
         model: model,
       };
-      weakMap.set(newNode, elm);
+      _VirtualDom_weakMap.set(newNode, elm);
       morphFacts(newNode, eventNode, facts);
       return newNode;
     }
@@ -323,7 +329,7 @@ function morph(domNode, vNode, eventNode) {
 
       if (
         domNode !== undefined &&
-        (elm = weakMap.get(domNode)) !== undefined &&
+        (elm = _VirtualDom_weakMap.get(domNode)) !== undefined &&
         elm.lazy !== undefined
       ) {
         var lazyRefs = elm.lazy.refs;
@@ -336,7 +342,7 @@ function morph(domNode, vNode, eventNode) {
 
       var actualVNode = same ? elm.lazy.vNode : thunk();
       var newNode = morph(domNode, actualVNode, eventNode);
-      weakMap.get(newNode).lazy = {
+      _VirtualDom_weakMap.get(newNode).lazy = {
         refs: refs,
         vNode: actualVNode,
       };
@@ -374,7 +380,7 @@ function morphChildren(domNode, children) {
     }
   }
   for (var j = numChildNodes - i; j > 0; j--) {
-    weakMap.delete(domNode.lastChild);
+    _VirtualDom_weakMap.delete(domNode.lastChild);
     domNode.removeChild(domNode.lastChild);
   }
 }
@@ -384,12 +390,12 @@ function morphChildrenKeyed(domNode, children) {
 
   for (var i = domNode.childNodes.length - 1; i >= 0; i++) {
     var child = domNode.childNodes[i];
-    var elm = weakMap.get(child);
+    var elm = _VirtualDom_weakMap.get(child);
     var key = elm !== undefined ? elm.key : undefined;
     if (typeof key === "string" && !map.has(key)) {
       map.set(key, child);
     } else {
-      weakMap.delete(lastChild);
+      _VirtualDom_weakMap.delete(lastChild);
       domNode.removeChild(child);
     }
   }
@@ -406,8 +412,8 @@ function morphChildrenKeyed(domNode, children) {
       next = morph(previous, node);
       map.delete(key);
       if (previous !== next) {
-        weakMap.get(next).key = key;
-        weakMap.delete(previous);
+        _VirtualDom_weakMap.get(next).key = key;
+        _VirtualDom_weakMap.delete(previous);
         domNode.removeChild(previous);
         domNode.insertBefore(next, previousDomNode);
       } else if (next.previousSibling !== previousDomNode) {
@@ -415,14 +421,14 @@ function morphChildrenKeyed(domNode, children) {
       }
     } else {
       next = morph(undefined, node);
-      weakMap.get(next).key = key;
+      _VirtualDom_weakMap.get(next).key = key;
       domNode.insertBefore(next, previousDomNode);
     }
     previousDomNode = previous;
   }
 
   map.forEach(function (child) {
-    weakMap.delete(child);
+    _VirtualDom_weakMap.delete(child);
     domNode.removeChild(child);
   });
 }
@@ -433,7 +439,7 @@ function morphFacts(domNode, eventNode, facts) {
   var properties = facts.a2;
   var attributes = facts.a3;
   var namespacedAttributes = facts.a4;
-  var elm = weakMap.get(domNode);
+  var elm = _VirtualDom_weakMap.get(domNode);
   var saved;
 
   saved = elm.eventFunctions;
