@@ -185,8 +185,8 @@ function morph(domNode, vNode, eventNode) {
   console.log("MORPH", vNode);
 
   switch (vNode.$) {
+    // Html.text
     case 0: {
-      // Html.text
       var text = vNode.a;
       if (
         domNode !== undefined &&
@@ -203,6 +203,7 @@ function morph(domNode, vNode, eventNode) {
       return newNode;
     }
 
+    // Html.div etc
     case 1:
     case 2: {
       var childMorpher = vNode.$ === 1 ? morphChildren : morphChildrenKeyed;
@@ -236,6 +237,7 @@ function morph(domNode, vNode, eventNode) {
       return newNode;
     }
 
+    // Markdown.toHtml etc
     case 3: {
       var facts = vNode.d;
       var model = vNode.g;
@@ -264,6 +266,34 @@ function morph(domNode, vNode, eventNode) {
       return newNode;
     }
 
+    // Html.Lazy.lazy etc
+    case 5: {
+      var refs = vNode.l;
+      var thunk = vNode.m;
+      var same = false;
+
+      if (
+        domNode !== undefined &&
+        domNode.elm !== undefined &&
+        domNode.elm.lazy !== undefined
+      ) {
+        var lazyRefs = domNode.elm.lazy.refs;
+        var i = lazyRefs.length;
+        same = i === refs.length;
+        while (same && i-- > 0) {
+          same = lazyRefs[i] === refs[i];
+        }
+      }
+
+      var actualVNode = same ? domNode.elm.lazy.vNode : thunk();
+      var newNode = morph(domNode, actualVNode, eventNode);
+      newNode.elm.lazy = {
+        refs: refs,
+        vNode: actualVNode,
+      };
+      return newNode;
+    }
+
     default: {
       var div = _VirtualDom_doc.createElement("div");
       div.dataset.dollar = vNode.$;
@@ -279,6 +309,7 @@ function emptyElmState() {
     style: new Map(),
     properties: new Map(),
     custom: undefined,
+    lazy: undefined,
   };
 }
 
