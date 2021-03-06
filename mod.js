@@ -26,7 +26,16 @@ const replacements = [
   // observer (see the `observe` function) and a `nodeIndex` helper function.
   [
     `var currNode = _VirtualDom_virtualize(bodyNode);`,
-    `var mutationObserver = new MutationObserver(${observe.toString()}); ${nodeIndex.toString()}; ${morph.toString()}; ${emptyElmState.toString()}; ${morphChildren.toString()}; ${morphChildrenKeyed.toString()}; ${morphFacts.toString()};`,
+    `
+    var mutationObserver = new MutationObserver(${observe.toString()});
+    var weakMap = new WeakMap();
+    ${nodeIndex.toString()};
+    ${morph.toString()};
+    ${emptyElmState.toString()};
+    ${morphChildren.toString()};
+    ${morphChildrenKeyed.toString()};
+    ${morphFacts.toString()};
+    `,
   ],
   // On rerender, instead of patching the whole `<body>` element, instead patch
   // every Elm element inside `<body>`.
@@ -81,6 +90,7 @@ function patcher(body) {
       domNode !== nextDomNode &&
       domNode.parentNode === _VirtualDom_doc.body
     ) {
+      weakMap.delete(domNode);
       domNode.parentNode.removeChild(domNode);
       exists = false;
     }
@@ -120,6 +130,7 @@ function patcher(body) {
     for (; index < domNodes.length; index++) {
       domNode = domNodes[index];
       if (domNode.parentNode !== null) {
+        weakMap.delete(domNode);
         domNode.parentNode.removeChild(domNode);
       }
     }
@@ -141,7 +152,7 @@ function observe(records) {
     record = records[i];
     for (j = 0; j < record.removedNodes.length; j++) {
       node = record.removedNodes[j];
-      if (domNodes.indexOf(node) !== -1) {
+      if (weakMap.has(node)) {
         found = true;
         break;
       }
@@ -159,7 +170,7 @@ function observe(records) {
         node = record.addedNodes[j];
         // If one of Elm’s elements has been inserted, redraw it completely to
         // protect against reordering done by a script or extension.
-        if (domNodes.indexOf(node) !== -1) {
+        if (weakMap.has(node)) {
           domNodesToRemove.push(node);
         } else {
           // But don’t apply this to nodes before or after Elm’s range of nodes.
@@ -182,6 +193,7 @@ function nodeIndex(node) {
 }
 
 function morph(domNode, vNode, eventNode) {
+  var elm;
   console.log("MORPH", vNode);
 
   switch (vNode.$) {
@@ -190,8 +202,8 @@ function morph(domNode, vNode, eventNode) {
       var text = vNode.a;
       if (
         domNode !== undefined &&
-        domNode.elm !== undefined &&
-        domNode.nodeType === 3
+        domNode.nodeType === 3 &&
+        weakMap.has(domNode)
       ) {
         if (domNode.data !== text) {
           domNode.data = text;
@@ -199,7 +211,7 @@ function morph(domNode, vNode, eventNode) {
         return domNode;
       }
       var newNode = _VirtualDom_doc.createTextNode(text);
-      newNode.elm = { key: undefined };
+      weakMap.set(newNode, { key: undefined });
       return newNode;
     }
 
@@ -215,9 +227,9 @@ function morph(domNode, vNode, eventNode) {
 
       if (
         domNode !== undefined &&
-        domNode.elm !== undefined &&
         domNode.namespaceURI === namespaceURI &&
-        domNode.nodeName === nodeName
+        domNode.nodeName === nodeName &&
+        weakMap.has(domNode)
       ) {
         morphFacts(domNode, eventNode, facts);
         childMorpher(domNode, children);
@@ -225,7 +237,7 @@ function morph(domNode, vNode, eventNode) {
       }
 
       var newNode = _VirtualDom_doc.createElementNS(namespaceURI, nodeName);
-      newNode.elm = emptyElmState();
+      weakMap.set(newNode, emptyElmState());
 
       if (_VirtualDom_divertHrefToApp && nodeName === "a") {
         newNode.addEventListener("click", _VirtualDom_divertHrefToApp(newNode));
@@ -247,21 +259,23 @@ function morph(domNode, vNode, eventNode) {
 
       if (
         domNode !== undefined &&
-        domNode.elm !== undefined &&
-        domNode.elm.custom !== undefined &&
-        domNode.elm.custom.render === render
+        (elm = weakMap.get(domNode)) !== undefined &&
+        elm !== undefined &&
+        elm.custom !== undefined &&
+        elm.custom.render === render
       ) {
-        var patch = diff(domNode.elm.custom.model, model);
+        var patch = diff(elm.custom.model, model);
         newNode = patch(domNode);
       } else {
         newNode = render(model);
       }
 
-      newNode.elm = emptyElmState();
-      newNode.elm.custom = {
+      elm = elm === undefined ? emptyElmState() : elm;
+      elm.custom = {
         render: render,
         model: model,
       };
+      weakMap.set(newNode, elm);
       morphFacts(newNode, eventNode, facts);
       return newNode;
     }
@@ -274,10 +288,10 @@ function morph(domNode, vNode, eventNode) {
 
       if (
         domNode !== undefined &&
-        domNode.elm !== undefined &&
-        domNode.elm.lazy !== undefined
+        (elm = weakMap.get(domNode)) !== undefined &&
+        elm.lazy !== undefined
       ) {
-        var lazyRefs = domNode.elm.lazy.refs;
+        var lazyRefs = elm.lazy.refs;
         var i = lazyRefs.length;
         same = i === refs.length;
         while (same && i-- > 0) {
@@ -285,9 +299,9 @@ function morph(domNode, vNode, eventNode) {
         }
       }
 
-      var actualVNode = same ? domNode.elm.lazy.vNode : thunk();
+      var actualVNode = same ? elm.lazy.vNode : thunk();
       var newNode = morph(domNode, actualVNode, eventNode);
-      newNode.elm.lazy = {
+      weakMap.get(newNode).lazy = {
         refs: refs,
         vNode: actualVNode,
       };
@@ -328,6 +342,7 @@ function morphChildren(domNode, children) {
     }
   }
   for (var j = numChildNodes - i; j > 0; j--) {
+    weakMap.delete(domNode.lastChild);
     domNode.removeChild(domNode.lastChild);
   }
 }
@@ -337,10 +352,12 @@ function morphChildrenKeyed(domNode, children) {
 
   for (var i = domNode.childNodes.length - 1; i >= 0; i++) {
     var child = domNode.childNodes[i];
-    var key = child.elm != null ? child.elm.key : undefined;
+    var elm = weakMap.get(child);
+    var key = elm !== undefined ? elm.key : undefined;
     if (typeof key === "string" && !map.has(key)) {
       map.set(key, child);
     } else {
+      weakMap.delete(lastChild);
       domNode.removeChild(child);
     }
   }
@@ -357,7 +374,8 @@ function morphChildrenKeyed(domNode, children) {
       next = morph(previous, node);
       map.delete(key);
       if (previous !== next) {
-        next.elm.key = key;
+        weakMap.get(next).key = key;
+        weakMap.delete(previous);
         domNode.removeChild(previous);
         domNode.insertBefore(next, previousDomNode);
       } else if (next.previousSibling !== previousDomNode) {
@@ -365,13 +383,14 @@ function morphChildrenKeyed(domNode, children) {
       }
     } else {
       next = morph(undefined, node);
-      next.elm.key = key;
+      weakMap.get(next).key = key;
       domNode.insertBefore(next, previousDomNode);
     }
     previousDomNode = previous;
   }
 
   map.forEach(function (child) {
+    weakMap.delete(child);
     domNode.removeChild(child);
   });
 }
@@ -395,7 +414,7 @@ function morphFacts(domNode, eventNode, facts) {
 
   if (styles !== undefined) {
     var domNodeStyle = domNode.style;
-    var saved = domNode.elm.style;
+    var saved = weakMap.get(domNode).style;
     for (var key in styles) {
       value = styles[key];
       if (domNodeStyle[key] !== value) {
@@ -449,7 +468,7 @@ function morphFacts(domNode, eventNode, facts) {
     }
   }
 
-  var saved = domNode.elm.properties;
+  var saved = weakMap.get(domNode).properties;
   for (var key in facts) {
     value = facts[key];
     if (domNode[key] !== value) {
