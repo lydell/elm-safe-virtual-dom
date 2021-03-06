@@ -55,6 +55,24 @@ var replacements = [
   ],
   ["currNode = nextNode;", ""],
 
+  // ### Debugger
+  ["var currPopout;", ""],
+  ["var cornerCurr = _VirtualDom_virtualize(cornerNode);", ""],
+  ["var cornerPatches = _VirtualDom_diff(cornerCurr, cornerNext);", ""],
+  [
+    "cornerNode = _VirtualDom_applyPatches(cornerNode, cornerCurr, cornerPatches, sendToApp);",
+    "cornerNode = _Morph_morphRootNode(cornerNode, cornerNext, sendToApp);",
+  ],
+  ["cornerCurr = cornerNext;", ""],
+  ["currPopout = undefined;", ""],
+  ["currPopout || (currPopout = _VirtualDom_virtualize(model.popout.b));", ""],
+  ["var popoutPatches = _VirtualDom_diff(currPopout, nextPopout);", ""],
+  [
+    "_VirtualDom_applyPatches(model.popout.b.body, currPopout, popoutPatches, sendToApp);",
+    "_Morph_morphRootNode(model.popout.b.body, nextPopout, sendToApp);",
+  ],
+  ["currPopout = nextPopout;", ""],
+
   // ### _VirtualDom_organizeFacts
   [
     /function _VirtualDom_organizeFacts\(factList\)\r?\n\{(\r?\n([\t ][^\n]+)?)+\r?\n\}/,
