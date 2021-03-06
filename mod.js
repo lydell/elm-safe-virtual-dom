@@ -546,11 +546,19 @@ function _Morph_morphLazy(domNode, refs, thunk, sendToApp) {
 }
 
 function _Morph_morphFacts(domNode, facts, sendToApp) {
-  var state = _Morph_weakMap.get(domNode);
+  var //
+    hasStyle = false,
+    state = _Morph_weakMap.get(domNode);
+
   _Morph_morphEvents(domNode, state, facts.a0, sendToApp);
-  _Morph_morphStyles(domNode, state, facts.a1);
+  hasStyle = _Morph_morphStyles(domNode, state, facts.a1);
   _Morph_morphProperties(domNode, state, facts.a2);
-  _Morph_morphAttributes(domNode, facts.a3, facts.a4);
+  _Morph_morphAttributes(
+    domNode,
+    facts.a3,
+    facts.a4,
+    hasStyle || "style" in facts.a2
+  );
 }
 
 function _Morph_morphEvents(domNode, state, events, sendToApp) {
@@ -618,6 +626,8 @@ function _Morph_morphStyles(domNode, state, styles) {
       state.style.delete(key);
     }
   });
+
+  return value !== undefined;
 }
 
 function _Morph_morphProperties(domNode, state, properties) {
@@ -643,7 +653,12 @@ function _Morph_morphProperties(domNode, state, properties) {
   });
 }
 
-function _Morph_morphAttributes(domNode, attributes, namespacedAttributes) {
+function _Morph_morphAttributes(
+  domNode,
+  attributes,
+  namespacedAttributes,
+  hasStyle
+) {
   var //
     attr,
     i,
@@ -671,7 +686,7 @@ function _Morph_morphAttributes(domNode, attributes, namespacedAttributes) {
   for (i = 0; i < domNode.attributes.length; i++) {
     attr = domNode.attributes[i];
     if (attr.namespaceURI === null) {
-      if (!(attr.name in attributes)) {
+      if (!(attr.name in attributes) && !(attr.name === "style" && hasStyle)) {
         domNode.removeAttribute(attr.name);
       }
     } else {
