@@ -136,7 +136,7 @@ function _Morph_morphBody(
   var //
     domNode,
     exists,
-    index,
+    i,
     length,
     nextDomNode,
     nextVNode,
@@ -147,8 +147,8 @@ function _Morph_morphBody(
 
   // Remove elements that have replaced Elm elements. (See the `observe`
   // function.)
-  for (index = 0; index < domNodesToRemove.length; index++) {
-    domNode = domNodesToRemove[index];
+  for (i = 0; i < domNodesToRemove.length; i++) {
+    domNode = domNodesToRemove[i];
     if (domNode.parentNode === _VirtualDom_doc.body) {
       domNode.parentNode.removeChild(domNode);
     }
@@ -159,17 +159,17 @@ function _Morph_morphBody(
   // “WHILE_CONS”. `body` is a linked list – it’s from `Browser.Document`:
   // `{ title = "Title", body = [ Html.div [] [], Html.text "Hello!" ] }`
   // eslint-disable-next-line no-restricted-syntax
-  for (index = 0; body.b; body = body.b, index++) {
+  for (i = 0; body.b; body = body.b, i++) {
     nextVNode = body.a;
 
     // When we’ve rendered `body` before, we might have DOM and Virtual DOM
     // nodes from before that should be patched rather than creating stuff from
     // scratch. The first render `domNodes` and `vNodes` are going to be empty,
     // so then we _only_ create new stuff.
-    exists = index < domNodes.length;
+    exists = i < domNodes.length;
     domNode = undefined;
     if (exists) {
-      domNode = domNodes[index];
+      domNode = domNodes[i];
       if (domNode.parentNode !== _VirtualDom_doc.body) {
         // Some script has (re-)moved/replaced our DOM node, so we need to make
         // one from scratch after all.
@@ -206,10 +206,10 @@ function _Morph_morphBody(
       );
     }
 
-    domNodes[index] = nextDomNode;
+    domNodes[i] = nextDomNode;
     previousDomNode = nextDomNode;
 
-    if (index === 0) {
+    if (i === 0) {
       bounds.lower = _Morph_nodeIndex(nextDomNode);
     }
   }
@@ -218,10 +218,10 @@ function _Morph_morphBody(
 
   // If the previous render had more children in `<body>` than now, remove the
   // excess elements.
-  if (index < domNodes.length) {
-    length = index;
-    for (; index < domNodes.length; index++) {
-      domNode = domNodes[index];
+  if (i < domNodes.length) {
+    length = i;
+    for (; i < domNodes.length; i++) {
+      domNode = domNodes[i];
       if (domNode.parentNode !== null) {
         _Morph_weakMap.delete(domNode);
         domNode.parentNode.removeChild(domNode);
@@ -285,8 +285,8 @@ function _Morph_observe(records, domNodesToRemove, bounds) {
 
 function _Morph_nodeIndex(node) {
   // https://stackoverflow.com/a/5913984/2010616
-  for (var index = 0; (node = node.previousSibling) !== null; index++);
-  return index;
+  for (var i = 0; (node = node.previousSibling) !== null; i++);
+  return i;
 }
 
 function _Morph_emptyState() {
