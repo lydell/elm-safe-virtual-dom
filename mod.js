@@ -85,14 +85,18 @@ var replacements = [
     [
       "var _VirtualDom_divertHrefToApp;",
       "var _Morph_weakMap = new WeakMap();",
-      _Morph_morphRootNode,
-      _Morph_morphBody,
       _Morph_observe,
       _Morph_nodeIndex,
       _Morph_emptyState,
+      _Morph_morphRootNode,
+      _Morph_morphBody,
       _Morph_morphNode,
+      _Morph_morphText,
+      _Morph_morphElement,
       _Morph_morphChildren,
       _Morph_morphChildrenKeyed,
+      _Morph_morphCustom,
+      _Morph_morphLazy,
       _Morph_morphFacts,
       _Morph_morphEvents,
       _Morph_morphStyles,
@@ -285,119 +289,53 @@ function _Morph_nodeIndex(node) {
   return index;
 }
 
-function _Morph_morphNode(domNode, vNode, sendToApp) {
-  var //
-    actualVNode,
-    childMorpher,
-    children,
-    diff,
-    state,
-    facts,
-    i,
-    lazyRefs,
-    model,
-    namespaceURI,
-    newNode,
-    nodeName,
-    patch,
-    refs,
-    render,
-    same,
-    tagger,
-    text,
-    thunk;
+function _Morph_emptyState() {
+  return {
+    key: undefined,
+    eventFunctions: new Map(),
+    style: new Map(),
+    properties: new Map(),
+    custom: undefined,
+    lazy: undefined,
+  };
+}
 
+function _Morph_morphNode(domNode, vNode, sendToApp) {
   console.log("MORPH", vNode);
 
   switch (vNode.$) {
     // Html.text
-    case 0: {
-      text = vNode.a;
-      if (
-        domNode !== undefined &&
-        domNode.nodeType === 3 &&
-        _Morph_weakMap.has(domNode)
-      ) {
-        if (domNode.data !== text) {
-          domNode.data = text;
-        }
-        return domNode;
-      }
-      newNode = _VirtualDom_doc.createTextNode(text);
-      _Morph_weakMap.set(newNode, { key: undefined });
-      return newNode;
-    }
+    case 0:
+      return _Morph_morphText(domNode, vNode.a);
 
     // Html.div etc
     case 1:
-    case 2: {
-      childMorpher =
-        vNode.$ === 1 ? _Morph_morphChildren : _Morph_morphChildrenKeyed;
-      nodeName = vNode.c;
-      namespaceURI =
-        vNode.f === undefined ? "http://www.w3.org/1999/xhtml" : vNode.f;
-      facts = vNode.d;
-      children = vNode.e;
-
-      if (
-        domNode !== undefined &&
-        domNode.namespaceURI === namespaceURI &&
-        domNode.nodeName === nodeName &&
-        _Morph_weakMap.has(domNode)
-      ) {
-        _Morph_morphFacts(domNode, facts, sendToApp);
-        childMorpher(domNode, children, sendToApp);
-        return domNode;
-      }
-
-      newNode = _VirtualDom_doc.createElementNS(namespaceURI, nodeName);
-      _Morph_weakMap.set(newNode, _Morph_emptyState());
-
-      if (_VirtualDom_divertHrefToApp && nodeName === "a") {
-        newNode.addEventListener("click", _VirtualDom_divertHrefToApp(newNode));
-      }
-
-      _Morph_morphFacts(newNode, facts, sendToApp);
-      childMorpher(newNode, children, sendToApp);
-
-      return newNode;
-    }
+    case 2:
+      return _Morph_morphElement(
+        domNode,
+        vNode.c,
+        vNode.f === undefined ? "http://www.w3.org/1999/xhtml" : vNode.f,
+        vNode.d,
+        vNode.e,
+        vNode.$ === 1 ? _Morph_morphChildren : _Morph_morphChildrenKeyed,
+        sendToApp
+      );
 
     // Markdown.toHtml etc
-    case 3: {
-      facts = vNode.d;
-      model = vNode.g;
-      render = vNode.h;
-      diff = vNode.i;
-      newNode;
-
-      if (
-        domNode !== undefined &&
-        (state = _Morph_weakMap.get(domNode)) !== undefined &&
-        state !== undefined &&
-        state.custom !== undefined &&
-        state.custom.render === render
-      ) {
-        patch = diff(state.custom.model, model);
-        newNode = patch === false ? domNode : patch(domNode);
-      } else {
-        newNode = render(model);
-        state = _Morph_emptyState();
-      }
-
-      state.custom = {
-        render: render,
-        model: model,
-      };
-      _Morph_weakMap.set(newNode, state);
-      _Morph_morphFacts(newNode, facts, sendToApp);
-      return newNode;
-    }
+    case 3:
+      return _Morph_morphCustom(
+        domNode,
+        vNode.d,
+        vNode.g,
+        vNode.h,
+        vNode.i,
+        sendToApp
+      );
 
     // Html.map
     case 4: {
-      tagger = vNode.j;
-      actualVNode = vNode.k;
+      var tagger = vNode.j,
+        actualVNode = vNode.k;
       return _Morph_morphNode(
         domNode,
         actualVNode,
@@ -408,47 +346,64 @@ function _Morph_morphNode(domNode, vNode, sendToApp) {
     }
 
     // Html.Lazy.lazy etc
-    case 5: {
-      refs = vNode.l;
-      thunk = vNode.m;
-      same = false;
-
-      if (
-        domNode !== undefined &&
-        (state = _Morph_weakMap.get(domNode)) !== undefined &&
-        state.lazy !== undefined
-      ) {
-        lazyRefs = state.lazy.refs;
-        i = lazyRefs.length;
-        same = i === refs.length;
-        while (same && i-- > 0) {
-          same = lazyRefs[i] === refs[i];
-        }
-      }
-
-      actualVNode = same ? state.lazy.vNode : thunk();
-      newNode = _Morph_morphNode(domNode, actualVNode, sendToApp);
-      _Morph_weakMap.get(newNode).lazy = {
-        refs: refs,
-        vNode: actualVNode,
-      };
-      return newNode;
-    }
+    case 5:
+      return _Morph_morphLazy(domNode, vNode.l, vNode.m, sendToApp);
 
     default:
       throw new Error("Unknown vNode.$: " + vNode.$);
   }
 }
 
-function _Morph_emptyState() {
-  return {
-    key: undefined,
-    eventFunctions: new Map(),
-    style: new Map(),
-    properties: new Map(),
-    custom: undefined,
-    lazy: undefined,
-  };
+function _Morph_morphText(domNode, text) {
+  var newNode;
+  if (
+    domNode !== undefined &&
+    domNode.nodeType === 3 &&
+    _Morph_weakMap.has(domNode)
+  ) {
+    if (domNode.data !== text) {
+      domNode.data = text;
+    }
+    return domNode;
+  }
+  newNode = _VirtualDom_doc.createTextNode(text);
+  _Morph_weakMap.set(newNode, { key: undefined });
+  return newNode;
+}
+
+function _Morph_morphElement(
+  domNode,
+  nodeName,
+  namespaceURI,
+  facts,
+  children,
+  morphChildren,
+  sendToApp
+) {
+  var newNode;
+
+  if (
+    domNode !== undefined &&
+    domNode.namespaceURI === namespaceURI &&
+    domNode.nodeName === nodeName &&
+    _Morph_weakMap.has(domNode)
+  ) {
+    _Morph_morphFacts(domNode, facts, sendToApp);
+    morphChildren(domNode, children, sendToApp);
+    return domNode;
+  }
+
+  newNode = _VirtualDom_doc.createElementNS(namespaceURI, nodeName);
+  _Morph_weakMap.set(newNode, _Morph_emptyState());
+
+  if (_VirtualDom_divertHrefToApp && nodeName === "a") {
+    newNode.addEventListener("click", _VirtualDom_divertHrefToApp(newNode));
+  }
+
+  _Morph_morphFacts(newNode, facts, sendToApp);
+  morphChildren(newNode, children, sendToApp);
+
+  return newNode;
 }
 
 function _Morph_morphChildren(domNode, children, sendToApp) {
@@ -530,10 +485,68 @@ function _Morph_morphChildrenKeyed(domNode, children, sendToApp) {
   });
 }
 
-function _Morph_morphFacts(domNode, facts, sendToApp) {
+function _Morph_morphCustom(domNode, facts, model, render, diff, sendToApp) {
   var //
-    state = _Morph_weakMap.get(domNode);
+    newNode,
+    patch,
+    state;
 
+  if (
+    domNode !== undefined &&
+    (state = _Morph_weakMap.get(domNode)) !== undefined &&
+    state !== undefined &&
+    state.custom !== undefined &&
+    state.custom.render === render
+  ) {
+    patch = diff(state.custom.model, model);
+    newNode = patch === false ? domNode : patch(domNode);
+  } else {
+    newNode = render(model);
+    state = _Morph_emptyState();
+  }
+
+  state.custom = {
+    render: render,
+    model: model,
+  };
+  _Morph_weakMap.set(newNode, state);
+  _Morph_morphFacts(newNode, facts, sendToApp);
+  return newNode;
+}
+
+function _Morph_morphLazy(domNode, refs, thunk, sendToApp) {
+  var //
+    same = false,
+    actualVNode,
+    i,
+    lazyRefs,
+    newNode,
+    state;
+
+  if (
+    domNode !== undefined &&
+    (state = _Morph_weakMap.get(domNode)) !== undefined &&
+    state.lazy !== undefined
+  ) {
+    lazyRefs = state.lazy.refs;
+    i = lazyRefs.length;
+    same = i === refs.length;
+    while (same && i-- > 0) {
+      same = lazyRefs[i] === refs[i];
+    }
+  }
+
+  actualVNode = same ? state.lazy.vNode : thunk();
+  newNode = _Morph_morphNode(domNode, actualVNode, sendToApp);
+  _Morph_weakMap.get(newNode).lazy = {
+    refs: refs,
+    vNode: actualVNode,
+  };
+  return newNode;
+}
+
+function _Morph_morphFacts(domNode, facts, sendToApp) {
+  var state = _Morph_weakMap.get(domNode);
   _Morph_morphEvents(domNode, state, facts.a0, sendToApp);
   _Morph_morphStyles(domNode, state, facts.a1);
   _Morph_morphProperties(domNode, state, facts.a2);
