@@ -45,7 +45,7 @@ const replacements = [
     `(${patcher.toString()})($1);`,
   ],
   [
-    /\nfunction _VirtualDom_organizeFacts\(factList\)\r?\n\{(\r?\n([\t ][^\n]+)?)+\r?\n\}/,
+    /function _VirtualDom_organizeFacts\(factList\)\r?\n\{(\r?\n([\t ][^\n]+)?)+\r?\n\}/,
     `${_VirtualDom_organizeFacts.toString()}`,
   ],
   [
@@ -63,6 +63,11 @@ const replacements = [
   [
     /var tagger;\s+var i;\s+while \(tagger = currentEventNode.j\)(\s+)\{(\r?\n|\1[\t ][^\n]+)+\1\}/,
     "",
+  ],
+  // https://github.com/elm/virtual-dom/issues/168
+  [
+    /var _VirtualDom_nodeNS = F2\(function\(namespace, tag\)\r?\n\{/,
+    `$& tag = _VirtualDom_noScript(tag);`,
   ],
 ];
 
