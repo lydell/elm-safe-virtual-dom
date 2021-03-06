@@ -46,6 +46,7 @@ type Msg
     = NextState
     | UrlRequested Browser.UrlRequest
     | UrlChanged Url.Url
+    | Log Int
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -67,6 +68,13 @@ update msg model =
             , Cmd.none
             )
 
+        Log int ->
+            let
+                _ =
+                    Debug.log "Log" int
+            in
+            ( model, Cmd.none )
+
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
@@ -87,7 +95,7 @@ view model =
             , div [ Html.Attributes.class "klass" ] [ text ("div: " ++ String.fromInt model.state) ]
             , Html.Keyed.node "sektion" [] [ ( "key1", text ("Nyckel: " ++ String.fromInt model.state) ), ( "key2", div [] [ text "key2" ] ) ]
             , Html.Lazy.lazy viewNum model.state
-            , map identity (text ("karta: " ++ String.fromInt model.state))
+            , map identity (Html.button [ onClick (Log 1), onClick (Log 2) ] [ text ("karta: " ++ String.fromInt model.state) ])
             , Markdown.toHtml [ Html.Attributes.id "my-id" ] ("nedåt: " ++ String.fromInt model.state)
             , Svg.svg [ Svg.Attributes.xmlLang "en-US" ] []
             , Html.button

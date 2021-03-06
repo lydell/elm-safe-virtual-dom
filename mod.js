@@ -413,16 +413,41 @@ function morphFacts(domNode, eventNode, facts) {
   var attributes = facts.a3;
   var namespacedAttributes = facts.a4;
   var elm = weakMap.get(domNode);
+  var saved;
 
-  // TODO!
-  // Also needs to _remove_ listeners.
-  // Is this all that’s needed?
-  _VirtualDom_applyEvents(domNode, eventNode, events);
+  saved = elm.eventFunctions;
+  for (var eventName in events) {
+    var handler = events[eventName];
+    var oldCallback = elm.eventFunctions.get(eventName);
+    if (oldCallback !== undefined) {
+      var oldHandler = oldCallback.q;
+      if (oldHandler.$ === handler.$) {
+        oldCallback.q = handler;
+        continue;
+      }
+      domNode.removeEventListener(eventName, oldCallback);
+    }
+    var callback = _VirtualDom_makeCallback(eventNode, handler);
+    domNode.addEventListener(
+      eventName,
+      callback,
+      _VirtualDom_passiveSupported && {
+        passive: $elm$virtual_dom$VirtualDom$toHandlerInt(handler) < 2,
+      }
+    );
+    saved.set(eventName, callback);
+  }
+  saved.forEach(function (oldCallback, eventName) {
+    if (!(eventName in events)) {
+      domNode.removeEventListener(eventName, oldCallback);
+      saved.delete(key);
+    }
+  });
 
   var domNodeStyle = domNode.style;
-  var saved = elm.style;
+  saved = elm.style;
   for (var key in styles) {
-    value = styles[key];
+    var value = styles[key];
     if (domNodeStyle[key] !== value) {
       if (!saved.has(key)) {
         saved.set(key, domNodeStyle.getPropertyValue(key));
