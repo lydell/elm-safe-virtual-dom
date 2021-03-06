@@ -1,0 +1,23 @@
+{
+  "root": true,
+  "extends": ["eslint:recommended"],
+  "env": {
+    "node": true
+  },
+  "rules": {
+    "one-var": [
+      "error",
+      {
+        "var": "always",
+        "separateRequires": true
+      }
+    ],
+    "no-restricted-syntax": [
+      "error",
+      {
+        "selector": "SequenceExpression",
+        "message": "The comma operator is confusing and a common mistake. Don’t use it!"
+      }
+    ]
+  }
+}

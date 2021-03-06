@@ -3,9 +3,14 @@
   "scripts": {
     "build": "elm make src/Main.elm --output elm.js && node mod.js elm.js",
     "debug": "elm make src/Main.elm --output elm.js --debug && node mod.js elm.js",
-    "optimize": "elm make src/Main.elm --output elm.js --optimize && node mod.js elm.js"
+    "optimize": "elm make src/Main.elm --output elm.js --optimize && node mod.js elm.js",
+    "test": "eslint . --report-unused-disable-directives && prettier --check ."
   },
   "dependencies": {
     "elm-tooling": "^1.2.0"
+  },
+  "devDependencies": {
+    "eslint": "^7.21.0",
+    "prettier": "^2.2.1"
   }
 }

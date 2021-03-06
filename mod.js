@@ -1,5 +1,14 @@
-const fs = require("fs");
-const path = require("path");
+/* global
+  _Json_unwrap,
+  _VirtualDom_addClass,
+  _VirtualDom_divertHrefToApp,
+  _VirtualDom_doc,
+  _VirtualDom_makeCallback,
+  _VirtualDom_passiveSupported,
+  _VirtualDom_weakMap,
+  $elm$virtual_dom$VirtualDom$toHandlerInt,
+  Map,
+*/
 
 // Inspired by:
 // https://github.com/jinjor/elm-break-dom/tree/0fef8cea8c57841e32c878febca34cf25af664a2#appendix-hacky-patch-for-browserapplication
@@ -8,7 +17,7 @@ const path = require("path");
 // And:
 // https://github.com/elm/browser/blob/1d28cd625b3ce07be6dfad51660bea6de2c905f2/src/Elm/Kernel/Debugger.js
 // So there should be up to 2 matches for every replacement.
-const replacements = [
+var replacements = [
   // Instead of keeping track of only the `<body>` element, keep track of all
   // elements directly inside `<body>` that Elm renders. `domNodes` and
   // `vNodes` (virtual DOM nodes) are parallel lists: They always have the
@@ -19,47 +28,49 @@ const replacements = [
   // `lower` is the index of the first Elm element inside `<body>`.
   // `upper` is the index of the last Elm element inside `<body>`.
   [
-    `var bodyNode = _VirtualDom_doc.body;`,
-    `var domNodes = [], domNodesToRemove = [], lower = 0, upper = 0;`,
+    "var bodyNode = _VirtualDom_doc.body;",
+    "var domNodes = [], domNodesToRemove = [], bounds = { lower: 0, upper: 0 };",
   ],
   // `currNode` used to be the virtual DOM node for `bodyNode`. It’s not
   // needed because of the above. Remove it and instead introduce a mutation
   // observer (see the `observe` function) and a `nodeIndex` helper function.
   [
-    `var currNode = _VirtualDom_virtualize(bodyNode);`,
-    `var mutationObserver = new MutationObserver(${observe.toString()});`,
+    "var currNode = _VirtualDom_virtualize(bodyNode);",
+    "var mutationObserver = new MutationObserver(function (records) { observe(records, domNodesToRemove, bounds); });",
   ],
   // On rerender, instead of patching the whole `<body>` element, instead patch
   // every Elm element inside `<body>`.
   [
     /var nextNode = _VirtualDom_node\('body'\)\(_List_Nil\)\(((?:[^)]|\)(?!;))+)\);\n.+\n.+\n[ \t]*currNode = nextNode;/,
-    `(${patcher.toString()})($1);`,
+    "patcher($1, sendToApp, mutationObserver, domNodes, domNodesToRemove, bounds);",
   ],
   [
     /function _VirtualDom_organizeFacts\(factList\)\r?\n\{(\r?\n([\t ][^\n]+)?)+\r?\n\}/,
-    `${_VirtualDom_organizeFacts.toString()}`,
+    _VirtualDom_organizeFacts.toString(),
   ],
   [
-    `function _VirtualDom_makeCallback(eventNode, initialHandler)`,
-    `function _VirtualDom_makeCallback(initialEventNode, initialHandler)`,
+    "function _VirtualDom_makeCallback(eventNode, initialHandler)",
+    "function _VirtualDom_makeCallback(initialEventNode, initialHandler)",
   ],
   [
-    `var handler = callback.q;`,
-    `var handler = callback.q; var eventNode = callback.r;`,
+    "var handler = callback.q;",
+    "var handler = callback.q; var eventNode = callback.r;",
   ],
   [
-    `callback.q = initialHandler;`,
-    `callback.q = initialHandler; callback.r = initialEventNode;`,
+    "callback.q = initialHandler;",
+    "callback.q = initialHandler; callback.r = initialEventNode;",
   ],
   [
     /var tagger;\s+var i;\s+while \(tagger = currentEventNode.j\)(\s+)\{(\r?\n|\1[\t ][^\n]+)+\1\}/,
     "",
   ],
   [
-    `var _VirtualDom_divertHrefToApp;`,
+    "var _VirtualDom_divertHrefToApp;",
     [
-      `var _VirtualDom_divertHrefToApp;`,
-      `var _VirtualDom_weakMap = new WeakMap();`,
+      "var _VirtualDom_divertHrefToApp;",
+      "var _VirtualDom_weakMap = new WeakMap();",
+      patcher,
+      observe,
       nodeIndex,
       morph,
       emptyElmState,
@@ -67,18 +78,34 @@ const replacements = [
       morphChildrenKeyed,
       morphFacts,
     ]
-      .map((i) => i.toString())
+      .map(function (i) {
+        return i.toString();
+      })
       .join("\n\n"),
   ],
   // https://github.com/elm/virtual-dom/issues/168
   [
     /var _VirtualDom_nodeNS = F2\(function\(namespace, tag\)\r?\n\{/,
-    `$& tag = _VirtualDom_noScript(tag);`,
+    "$& tag = _VirtualDom_noScript(tag);",
   ],
 ];
 
-function patcher(body) {
-  var domNode, exists, index, length, nextDomNode, nextVNode, previousDomNode;
+function patcher(
+  body,
+  sendToApp,
+  mutationObserver,
+  domNodes,
+  domNodesToRemove,
+  bounds
+) {
+  var //
+    domNode,
+    exists,
+    index,
+    length,
+    nextDomNode,
+    nextVNode,
+    previousDomNode;
 
   // We don’t want to be notified about changes to the DOM we make ourselves.
   mutationObserver.disconnect();
@@ -96,6 +123,7 @@ function patcher(body) {
   // This kind of loop is common in Elm Kernel code and usually marked with
   // “WHILE_CONS”. `body` is a linked list – it’s from `Browser.Document`:
   // `{ title = "Title", body = [ Html.div [] [], Html.text "Hello!" ] }`
+  // eslint-disable-next-line no-restricted-syntax
   for (index = 0; body.b; body = body.b, index++) {
     nextVNode = body.a;
 
@@ -149,11 +177,11 @@ function patcher(body) {
     previousDomNode = nextDomNode;
 
     if (index === 0) {
-      lower = nodeIndex(nextDomNode);
+      bounds.lower = nodeIndex(nextDomNode);
     }
   }
 
-  upper = nodeIndex(nextDomNode);
+  bounds.upper = nodeIndex(nextDomNode);
 
   // If the previous render had more children in `<body>` than now, remove the
   // excess elements.
@@ -174,10 +202,14 @@ function patcher(body) {
   mutationObserver.observe(_VirtualDom_doc.body, { childList: true });
 }
 
-function observe(records) {
-  var found, i, index, j, node, record;
-
-  found = false;
+function observe(records, domNodesToRemove, bounds) {
+  var //
+    found = false,
+    i,
+    index,
+    j,
+    node,
+    record;
 
   // See if any of Elm’s elements have been removed by some script or extension.
   for (i = 0; i < records.length; i++) {
@@ -209,7 +241,7 @@ function observe(records) {
           // This way we don’t remove the two `<div>`s inserted by Google
           // Translate. This is why we track `lower` and `upper`.
           index = nodeIndex(node);
-          if (index >= lower && index <= upper) {
+          if (index >= bounds.lower && index <= bounds.upper) {
             domNodesToRemove.push(node);
           }
         }
@@ -225,13 +257,33 @@ function nodeIndex(node) {
 }
 
 function morph(domNode, vNode, eventNode) {
-  var elm;
+  var //
+    actualVNode,
+    childMorpher,
+    children,
+    diff,
+    elm,
+    facts,
+    i,
+    lazyRefs,
+    model,
+    namespaceURI,
+    newNode,
+    nodeName,
+    patch,
+    refs,
+    render,
+    same,
+    tagger,
+    text,
+    thunk;
+
   console.log("MORPH", vNode);
 
   switch (vNode.$) {
     // Html.text
     case 0: {
-      var text = vNode.a;
+      text = vNode.a;
       if (
         domNode !== undefined &&
         domNode.nodeType === 3 &&
@@ -242,7 +294,7 @@ function morph(domNode, vNode, eventNode) {
         }
         return domNode;
       }
-      var newNode = _VirtualDom_doc.createTextNode(text);
+      newNode = _VirtualDom_doc.createTextNode(text);
       _VirtualDom_weakMap.set(newNode, { key: undefined });
       return newNode;
     }
@@ -250,12 +302,12 @@ function morph(domNode, vNode, eventNode) {
     // Html.div etc
     case 1:
     case 2: {
-      var childMorpher = vNode.$ === 1 ? morphChildren : morphChildrenKeyed;
-      var nodeName = vNode.c;
-      var namespaceURI =
+      childMorpher = vNode.$ === 1 ? morphChildren : morphChildrenKeyed;
+      nodeName = vNode.c;
+      namespaceURI =
         vNode.f === undefined ? "http://www.w3.org/1999/xhtml" : vNode.f;
-      var facts = vNode.d;
-      var children = vNode.e;
+      facts = vNode.d;
+      children = vNode.e;
 
       if (
         domNode !== undefined &&
@@ -268,7 +320,7 @@ function morph(domNode, vNode, eventNode) {
         return domNode;
       }
 
-      var newNode = _VirtualDom_doc.createElementNS(namespaceURI, nodeName);
+      newNode = _VirtualDom_doc.createElementNS(namespaceURI, nodeName);
       _VirtualDom_weakMap.set(newNode, emptyElmState());
 
       if (_VirtualDom_divertHrefToApp && nodeName === "a") {
@@ -283,11 +335,11 @@ function morph(domNode, vNode, eventNode) {
 
     // Markdown.toHtml etc
     case 3: {
-      var facts = vNode.d;
-      var model = vNode.g;
-      var render = vNode.h;
-      var diff = vNode.i;
-      var newNode;
+      facts = vNode.d;
+      model = vNode.g;
+      render = vNode.h;
+      diff = vNode.i;
+      newNode;
 
       if (
         domNode !== undefined &&
@@ -296,7 +348,7 @@ function morph(domNode, vNode, eventNode) {
         elm.custom !== undefined &&
         elm.custom.render === render
       ) {
-        var patch = diff(elm.custom.model, model);
+        patch = diff(elm.custom.model, model);
         newNode = patch === false ? domNode : patch(domNode);
       } else {
         newNode = render(model);
@@ -314,8 +366,8 @@ function morph(domNode, vNode, eventNode) {
 
     // Html.map
     case 4: {
-      var tagger = vNode.j;
-      var actualVNode = vNode.k;
+      tagger = vNode.j;
+      actualVNode = vNode.k;
       return morph(domNode, actualVNode, function (message, stopPropagation) {
         return eventNode(tagger(message), stopPropagation);
       });
@@ -323,25 +375,25 @@ function morph(domNode, vNode, eventNode) {
 
     // Html.Lazy.lazy etc
     case 5: {
-      var refs = vNode.l;
-      var thunk = vNode.m;
-      var same = false;
+      refs = vNode.l;
+      thunk = vNode.m;
+      same = false;
 
       if (
         domNode !== undefined &&
         (elm = _VirtualDom_weakMap.get(domNode)) !== undefined &&
         elm.lazy !== undefined
       ) {
-        var lazyRefs = elm.lazy.refs;
-        var i = lazyRefs.length;
+        lazyRefs = elm.lazy.refs;
+        i = lazyRefs.length;
         same = i === refs.length;
         while (same && i-- > 0) {
           same = lazyRefs[i] === refs[i];
         }
       }
 
-      var actualVNode = same ? elm.lazy.vNode : thunk();
-      var newNode = morph(domNode, actualVNode, eventNode);
+      actualVNode = same ? elm.lazy.vNode : thunk();
+      newNode = morph(domNode, actualVNode, eventNode);
       _VirtualDom_weakMap.get(newNode).lazy = {
         refs: refs,
         vNode: actualVNode,
@@ -366,9 +418,14 @@ function emptyElmState() {
 }
 
 function morphChildren(domNode, children) {
-  var numChildNodes = domNode.childNodes.length;
-  var previous, next;
-  for (var i = 0; i < children.length; i++) {
+  var //
+    numChildNodes = domNode.childNodes.length,
+    i,
+    j,
+    next,
+    previous;
+
+  for (i = 0; i < children.length; i++) {
     if (i < numChildNodes) {
       previous = domNode.childNodes[i];
       next = morph(previous, children[i]);
@@ -379,35 +436,41 @@ function morphChildren(domNode, children) {
       domNode.appendChild(morph(undefined, children[i]));
     }
   }
-  for (var j = numChildNodes - i; j > 0; j--) {
+  for (j = numChildNodes - i; j > 0; j--) {
     _VirtualDom_weakMap.delete(domNode.lastChild);
     domNode.removeChild(domNode.lastChild);
   }
 }
 
 function morphChildrenKeyed(domNode, children) {
-  var map = new Map();
+  var //
+    map = new Map(),
+    previousDomNode = null,
+    child,
+    elm,
+    i,
+    key,
+    next,
+    node,
+    previous;
 
-  for (var i = domNode.childNodes.length - 1; i >= 0; i++) {
-    var child = domNode.childNodes[i];
-    var elm = _VirtualDom_weakMap.get(child);
-    var key = elm !== undefined ? elm.key : undefined;
+  for (i = domNode.childNodes.length - 1; i >= 0; i--) {
+    child = domNode.childNodes[i];
+    elm = _VirtualDom_weakMap.get(child);
+    key = elm !== undefined ? elm.key : undefined;
     if (typeof key === "string" && !map.has(key)) {
       map.set(key, child);
     } else {
-      _VirtualDom_weakMap.delete(lastChild);
+      _VirtualDom_weakMap.delete(child);
       domNode.removeChild(child);
     }
   }
 
-  var previousDomNode = null;
-
-  for (var i = 0; i < children.length; i++) {
-    var child = children[i];
-    var key = child.a;
-    var node = child.b;
-    var previous = map.get(key);
-    var next;
+  for (i = 0; i < children.length; i++) {
+    child = children[i];
+    key = child.a;
+    node = child.b;
+    previous = map.get(key);
     if (previous !== undefined) {
       next = morph(previous, node);
       map.delete(key);
@@ -434,20 +497,33 @@ function morphChildrenKeyed(domNode, children) {
 }
 
 function morphFacts(domNode, eventNode, facts) {
-  var events = facts.a0;
-  var styles = facts.a1;
-  var properties = facts.a2;
-  var attributes = facts.a3;
-  var namespacedAttributes = facts.a4;
-  var elm = _VirtualDom_weakMap.get(domNode);
-  var saved;
+  var //
+    events = facts.a0,
+    styles = facts.a1,
+    properties = facts.a2,
+    attributes = facts.a3,
+    namespacedAttributes = facts.a4,
+    elm = _VirtualDom_weakMap.get(domNode),
+    attr,
+    callback,
+    domNodeStyle,
+    eventName,
+    handler,
+    i,
+    key,
+    namespace,
+    oldCallback,
+    oldHandler,
+    pair,
+    saved,
+    value;
 
   saved = elm.eventFunctions;
-  for (var eventName in events) {
-    var handler = events[eventName];
-    var oldCallback = elm.eventFunctions.get(eventName);
+  for (eventName in events) {
+    handler = events[eventName];
+    oldCallback = elm.eventFunctions.get(eventName);
     if (oldCallback !== undefined) {
-      var oldHandler = oldCallback.q;
+      oldHandler = oldCallback.q;
       if (oldHandler.$ === handler.$) {
         oldCallback.q = handler;
         oldCallback.r = eventNode;
@@ -455,7 +531,7 @@ function morphFacts(domNode, eventNode, facts) {
       }
       domNode.removeEventListener(eventName, oldCallback);
     }
-    var callback = _VirtualDom_makeCallback(eventNode, handler);
+    callback = _VirtualDom_makeCallback(eventNode, handler);
     domNode.addEventListener(
       eventName,
       callback,
@@ -472,10 +548,10 @@ function morphFacts(domNode, eventNode, facts) {
     }
   });
 
-  var domNodeStyle = domNode.style;
+  domNodeStyle = domNode.style;
   saved = elm.style;
-  for (var key in styles) {
-    var value = styles[key];
+  for (key in styles) {
+    value = styles[key];
     if (domNodeStyle[key] !== value) {
       if (!saved.has(key)) {
         saved.set(key, domNodeStyle.getPropertyValue(key));
@@ -490,22 +566,22 @@ function morphFacts(domNode, eventNode, facts) {
     }
   });
 
-  for (var key in attributes) {
-    var value = attributes[key];
+  for (key in attributes) {
+    value = attributes[key];
     if (domNode.getAttribute(key) !== value) {
       domNode.setAttribute(key, value);
     }
   }
-  for (var key in namespacedAttributes) {
-    var pair = namespacedAttributes[key];
-    var namespace = pair.f;
-    var value = pair.o;
+  for (key in namespacedAttributes) {
+    pair = namespacedAttributes[key];
+    namespace = pair.f;
+    value = pair.o;
     if (domNode.getAttributeNS(namespace, key) !== value) {
       domNode.setAttributeNS(namespace, key, value);
     }
   }
-  for (var i = 0; i < domNode.attributes.length; i++) {
-    var attr = domNode.attributes[i];
+  for (i = 0; i < domNode.attributes.length; i++) {
+    attr = domNode.attributes[i];
     if (attr.namespaceURI === null) {
       if (!(attr.name in attributes)) {
         domNode.removeAttribute(attr.name);
@@ -518,7 +594,7 @@ function morphFacts(domNode, eventNode, facts) {
   }
 
   saved = elm.properties;
-  for (var key in properties) {
+  for (key in properties) {
     value = properties[key];
     if (domNode[key] !== value) {
       if (!saved.has(key)) {
@@ -536,16 +612,24 @@ function morphFacts(domNode, eventNode, facts) {
 }
 
 function _VirtualDom_organizeFacts(factList) {
+  var //
+    entry,
+    facts,
+    key,
+    subFacts,
+    tag,
+    value;
+
   for (
-    var facts = { a0: {}, a1: {}, a2: {}, a3: {}, a4: {} };
+    facts = { a0: {}, a1: {}, a2: {}, a3: {}, a4: {} };
     factList.b;
     factList = factList.b // WHILE_CONS
   ) {
-    var entry = factList.a;
-    var tag = entry.$;
-    var key = entry.n;
-    var value = tag === "a2" ? _Json_unwrap(entry.o) : entry.o;
-    var subFacts = facts[tag];
+    entry = factList.a;
+    tag = entry.$;
+    key = entry.n;
+    value = tag === "a2" ? _Json_unwrap(entry.o) : entry.o;
+    subFacts = facts[tag];
     if (
       (tag === "a2" && key === "className") ||
       (tag === "a3" && key === "class")
@@ -558,36 +642,51 @@ function _VirtualDom_organizeFacts(factList) {
   return facts;
 }
 
+// RUN
+
+var fs = require("fs"),
+  path = require("path");
+
 function patch(code) {
   return replacements.reduce(strictReplace, code);
 }
 
-function strictReplace(code, [search, replacement]) {
-  const parts = code.split(search);
+function strictReplace(code, tuple) {
+  var //
+    search = tuple[0],
+    replacement = tuple[1],
+    parts = code.split(search),
+    content,
+    filePath;
+
   if (parts.length <= 1) {
-    const filePath = path.resolve("elm-virtual-dom-patch-error.txt");
-    const content = `
-Patching Elm’s JS output to avoid virtual DOM errors caused by browser extensions failed!
-This message is defined in the app/patches/ folder.
-
-### Code to replace (not found!):
-${search}
-
-### Replacement:
-${replacement}
-
-### Input code:
-${code}
-`.trimStart();
+    filePath = path.resolve("elm-virtual-dom-patch-error.txt");
+    content = [
+      "Patching Elm’s JS output to avoid virtual DOM errors caused by browser extensions failed!",
+      "This message is defined in the app/patches/ folder.",
+      "",
+      "### Code to replace (not found!):",
+      search,
+      "",
+      "### Replacement:",
+      replacement,
+      "",
+      "### Input code:",
+      code,
+    ].join("\n");
     try {
       fs.writeFileSync(filePath, content);
     } catch (error) {
       throw new Error(
-        `Elm Virtual DOM patch: Code to replace was not found! Tried to write more info to ${filePath}, but got this error: ${error.message}`
+        "Elm Virtual DOM patch: Code to replace was not found! Tried to write more info to " +
+          filePath +
+          ", but got this error: " +
+          error.message
       );
     }
     throw new Error(
-      `Elm Virtual DOM patch: Code to replace was not found! More info written to ${filePath}`
+      "Elm Virtual DOM patch: Code to replace was not found! More info written to " +
+        filePath
     );
   }
   return typeof search === "string"
@@ -595,5 +694,8 @@ ${code}
     : code.replace(search, replacement);
 }
 
-const file = process.argv[2];
-fs.writeFileSync(file, patch(fs.readFileSync(file, "utf8")));
+function overwrite(file, transform) {
+  fs.writeFileSync(file, transform(fs.readFileSync(file, "utf8")));
+}
+
+overwrite(process.argv[2], patch);
