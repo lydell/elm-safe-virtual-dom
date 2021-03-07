@@ -408,7 +408,7 @@ function _Morph_morphElement(
   if (
     domNode !== undefined &&
     domNode.namespaceURI === namespaceURI &&
-    domNode.nodeName === nodeName &&
+    domNode.localName === nodeName &&
     _Morph_weakMap.has(domNode)
   ) {
     _Morph_morphFacts(domNode, facts, sendToApp);
