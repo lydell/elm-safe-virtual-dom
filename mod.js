@@ -8,6 +8,7 @@
   _VirtualDom_passiveSupported,
   $elm$virtual_dom$VirtualDom$toHandlerInt,
   Map,
+  Set,
 */
 
 // Inspired by:
@@ -120,6 +121,7 @@ var replacements = [
       _Morph_morphStyles,
       _Morph_morphProperties,
       _Morph_morphAttributes,
+      _Morph_morphNamespacedAttributes,
     ]
       .map(function (i) {
         return i.toString();
@@ -313,6 +315,8 @@ function _Morph_emptyState() {
     eventFunctions: new Map(),
     style: new Map(),
     properties: new Map(),
+    attributes: new Set(),
+    namespacedAttributes: new Map(),
     custom: undefined,
     lazy: undefined,
   };
@@ -564,19 +568,12 @@ function _Morph_morphLazy(domNode, refs, thunk, sendToApp) {
 }
 
 function _Morph_morphFacts(domNode, facts, sendToApp) {
-  var //
-    hasStyle = false,
-    state = _Morph_weakMap.get(domNode);
-
+  var state = _Morph_weakMap.get(domNode);
   _Morph_morphEvents(domNode, state, facts.a0, sendToApp);
-  hasStyle = _Morph_morphStyles(domNode, state, facts.a1);
+  _Morph_morphStyles(domNode, state, facts.a1);
   _Morph_morphProperties(domNode, state, facts.a2);
-  _Morph_morphAttributes(
-    domNode,
-    facts.a3,
-    facts.a4,
-    hasStyle || "style" in facts.a2
-  );
+  _Morph_morphAttributes(domNode, state, facts.a3);
+  _Morph_morphNamespacedAttributes(domNode, state, facts.a4);
 }
 
 function _Morph_morphEvents(domNode, state, events, sendToApp) {
@@ -671,48 +668,59 @@ function _Morph_morphProperties(domNode, state, properties) {
   });
 }
 
-function _Morph_morphAttributes(
-  domNode,
-  attributes,
-  namespacedAttributes,
-  hasStyle
-) {
+function _Morph_morphAttributes(domNode, state, attributes) {
   var //
-    attr,
-    i,
     key,
-    namespace,
-    pair,
     value;
 
   for (key in attributes) {
     value = attributes[key];
     if (domNode.getAttribute(key) !== value) {
+      state.attributes.add(key);
       domNode.setAttribute(key, value);
     }
   }
+
+  state.attributes.forEach(function (key) {
+    if (!(key in attributes)) {
+      domNode.removeAttribute(key);
+      state.attributes.delete(key);
+    }
+  });
+}
+
+function _Morph_morphNamespacedAttributes(
+  domNode,
+  state,
+  namespacedAttributes
+) {
+  var //
+    key,
+    namespace,
+    pair,
+    previousNamespace,
+    value;
 
   for (key in namespacedAttributes) {
     pair = namespacedAttributes[key];
     namespace = pair.f;
     value = pair.o;
+    previousNamespace = state.namespacedAttributes.get(key);
+    if (previousNamespace !== undefined && previousNamespace !== namespace) {
+      domNode.removeAttributeNS(previousNamespace, key);
+    }
     if (domNode.getAttributeNS(namespace, key) !== value) {
+      state.namespacedAttributes.set(key, namespace);
       domNode.setAttributeNS(namespace, key, value);
     }
   }
 
-  for (i = 0; i < domNode.attributes.length; i++) {
-    attr = domNode.attributes[i];
-    if (attr.namespaceURI === null) {
-      if (!(attr.name in attributes) && !(attr.name === "style" && hasStyle)) {
-        domNode.removeAttribute(attr.name);
-      }
-    } else {
-      if (!(attr.name in namespacedAttributes)) {
-        domNode.removeAttributeNS(attr.namespaceURI, attr.name);
-      }
+  state.namespacedAttributes.forEach(function (namespace, key) {
+    if (!(key in namespacedAttributes)) {
+      domNode.removeAttributeNS(namespace, key);
+      state.namespacedAttributes.delete(key);
     }
-  }
+  });
 }
 
 function _VirtualDom_organizeFacts(factList) {
