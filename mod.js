@@ -19,122 +19,125 @@
 // https://github.com/elm/browser/blob/1d28cd625b3ce07be6dfad51660bea6de2c905f2/src/Elm/Kernel/Debugger.js
 // So there should be up to 2 matches for every replacement.
 var replacements = [
-  // ### _Browser_document
-  // Instead of keeping track of only the `<body>` element, keep track of all
-  // elements directly inside `<body>` that Elm renders. `domNodes` and
-  // `vNodes` (virtual DOM nodes) are parallel lists: They always have the
-  // same length and items at the same index correspond to each other.
-  // `domNodesToRemove` is a list of elements that have replaced Elm elements.
-  // Google Translate does this – it replaces text nodes with `<font>`
-  // elements. If you have text nodes directly in `<body>` this is needed.
-  // `lower` is the index of the first Elm element inside `<body>`.
-  // `upper` is the index of the last Elm element inside `<body>`.
-  [
-    "var bodyNode = _VirtualDom_doc.body;",
-    "var domNodes = [], domNodesToRemove = [], bounds = { lower: 0, upper: 0 };",
-  ],
-  // `currNode` used to be the virtual DOM node for `bodyNode`. It’s not
-  // needed because of the above. Remove it and instead introduce a mutation
-  // observer (see the `_Morph_observe` function) and a `_Morph_nodeIndex` helper function.
-  [
-    "var currNode = _VirtualDom_virtualize(bodyNode);",
-    "var mutationObserver = new MutationObserver(function (records) { _Morph_observe(records, domNodesToRemove, bounds); });",
-  ],
-  // On rerender, instead of patching the whole `<body>` element, instead patch
-  // every Elm element inside `<body>`.
-  [
-    /var nextNode = _VirtualDom_node\('body'\)\(_List_Nil\)\(((?:[^)]|\)(?!;))+)\);\n.+\n.+\n[ \t]*currNode = nextNode;/,
-    "_Morph_morphBody($1, sendToApp, mutationObserver, domNodes, domNodesToRemove, bounds);",
-  ],
+    // ### _Browser_document
+    // Instead of keeping track of only the `<body>` element, keep track of all
+    // elements directly inside `<body>` that Elm renders. `domNodes` and
+    // `vNodes` (virtual DOM nodes) are parallel lists: They always have the
+    // same length and items at the same index correspond to each other.
+    // `domNodesToRemove` is a list of elements that have replaced Elm elements.
+    // Google Translate does this – it replaces text nodes with `<font>`
+    // elements. If you have text nodes directly in `<body>` this is needed.
+    // `lower` is the index of the first Elm element inside `<body>`.
+    // `upper` is the index of the last Elm element inside `<body>`.
+    [
+      "var bodyNode = _VirtualDom_doc.body;",
+      "var domNodes = [], domNodesToRemove = [], bounds = { lower: 0, upper: 0 };",
+    ],
+    // `currNode` used to be the virtual DOM node for `bodyNode`. It’s not
+    // needed because of the above. Remove it and instead introduce a mutation
+    // observer (see the `_Morph_observe` function) and a `_Morph_nodeIndex` helper function.
+    [
+      "var currNode = _VirtualDom_virtualize(bodyNode);",
+      "var mutationObserver = new MutationObserver(function (records) { _Morph_observe(records, domNodesToRemove, bounds); });",
+    ],
+    // On rerender, instead of patching the whole `<body>` element, instead patch
+    // every Elm element inside `<body>`.
+    [
+      /var nextNode = _VirtualDom_node\('body'\)\(_List_Nil\)\(((?:[^)]|\)(?!;))+)\);\n.+\n.+\n[ \t]*currNode = nextNode;/,
+      "_Morph_morphBody($1, sendToApp, mutationObserver, domNodes, domNodesToRemove, bounds);",
+    ],
 
-  // ### _Browser_element
-  ["var currNode = _VirtualDom_virtualize(domNode);", ""],
-  ["var patches = _VirtualDom_diff(currNode, nextNode);", ""],
-  [
-    "domNode = _VirtualDom_applyPatches(domNode, currNode, patches, sendToApp);",
-    "domNode = _Morph_morphRootNode(domNode, nextNode, sendToApp);",
-  ],
-  ["currNode = nextNode;", ""],
+    // ### _Browser_element
+    ["var currNode = _VirtualDom_virtualize(domNode);", ""],
+    ["var patches = _VirtualDom_diff(currNode, nextNode);", ""],
+    [
+      "domNode = _VirtualDom_applyPatches(domNode, currNode, patches, sendToApp);",
+      "domNode = _Morph_morphRootNode(domNode, nextNode, sendToApp);",
+    ],
+    ["currNode = nextNode;", ""],
 
-  // ### Debugger
-  ["var currPopout;", ""],
-  ["var cornerCurr = _VirtualDom_virtualize(cornerNode);", ""],
-  ["var cornerPatches = _VirtualDom_diff(cornerCurr, cornerNext);", ""],
-  [
-    "cornerNode = _VirtualDom_applyPatches(cornerNode, cornerCurr, cornerPatches, sendToApp);",
-    "cornerNode = _Morph_morphRootNode(cornerNode, cornerNext, sendToApp);",
-  ],
-  ["cornerCurr = cornerNext;", ""],
-  ["currPopout = undefined;", ""],
-  ["currPopout || (currPopout = _VirtualDom_virtualize(model.popout.b));", ""],
-  ["var popoutPatches = _VirtualDom_diff(currPopout, nextPopout);", ""],
-  [
-    "_VirtualDom_applyPatches(model.popout.b.body, currPopout, popoutPatches, sendToApp);",
-    "_Morph_morphRootNode(model.popout.b.body, nextPopout, sendToApp);",
-  ],
-  ["currPopout = nextPopout;", ""],
+    // ### _VirtualDom_organizeFacts
+    [
+      /function _VirtualDom_organizeFacts\(factList\)\r?\n\{(\r?\n([\t ][^\n]+)?)+\r?\n\}/,
+      _VirtualDom_organizeFacts.toString(),
+    ],
 
-  // ### _VirtualDom_organizeFacts
-  [
-    /function _VirtualDom_organizeFacts\(factList\)\r?\n\{(\r?\n([\t ][^\n]+)?)+\r?\n\}/,
-    _VirtualDom_organizeFacts.toString(),
-  ],
+    // ### _VirtualDom_makeCallback
+    [
+      "function _VirtualDom_makeCallback(eventNode, initialHandler)",
+      "function _VirtualDom_makeCallback(initialEventNode, initialHandler)",
+    ],
+    [
+      "var handler = callback.q;",
+      "var handler = callback.q; var eventNode = callback.r;",
+    ],
+    [
+      "callback.q = initialHandler;",
+      "callback.q = initialHandler; callback.r = initialEventNode;",
+    ],
+    [
+      /var tagger;\s+var i;\s+while \(tagger = currentEventNode.j\)(\s+)\{(\r?\n|\1[\t ][^\n]+)+\1\}/,
+      "",
+    ],
 
-  // ### _VirtualDom_makeCallback
-  [
-    "function _VirtualDom_makeCallback(eventNode, initialHandler)",
-    "function _VirtualDom_makeCallback(initialEventNode, initialHandler)",
-  ],
-  [
-    "var handler = callback.q;",
-    "var handler = callback.q; var eventNode = callback.r;",
-  ],
-  [
-    "callback.q = initialHandler;",
-    "callback.q = initialHandler; callback.r = initialEventNode;",
-  ],
-  [
-    /var tagger;\s+var i;\s+while \(tagger = currentEventNode.j\)(\s+)\{(\r?\n|\1[\t ][^\n]+)+\1\}/,
-    "",
-  ],
-
-  // ### Insert functions
-  [
-    "var _VirtualDom_divertHrefToApp;",
+    // ### Insert functions
     [
       "var _VirtualDom_divertHrefToApp;",
-      "var _Morph_weakMap = new WeakMap();",
-      _Morph_observe,
-      _Morph_nodeIndex,
-      _Morph_emptyState,
-      _Morph_morphRootNode,
-      _Morph_morphBody,
-      _Morph_morphNode,
-      _Morph_morphText,
-      _Morph_morphElement,
-      _Morph_morphChildren,
-      _Morph_morphChildrenKeyed,
-      _Morph_morphCustom,
-      _Morph_morphLazy,
-      _Morph_morphFacts,
-      _Morph_morphEvents,
-      _Morph_morphStyles,
-      _Morph_morphProperties,
-      _Morph_morphAttributes,
-      _Morph_morphNamespacedAttributes,
-    ]
-      .map(function (i) {
-        return i.toString();
-      })
-      .join("\n\n"),
-  ],
+      [
+        "var _VirtualDom_divertHrefToApp;",
+        "var _Morph_weakMap = new WeakMap();",
+        _Morph_observe,
+        _Morph_nodeIndex,
+        _Morph_emptyState,
+        _Morph_morphRootNode,
+        _Morph_morphBody,
+        _Morph_morphNode,
+        _Morph_morphText,
+        _Morph_morphElement,
+        _Morph_morphChildren,
+        _Morph_morphChildrenKeyed,
+        _Morph_morphCustom,
+        _Morph_morphLazy,
+        _Morph_morphFacts,
+        _Morph_morphEvents,
+        _Morph_morphStyles,
+        _Morph_morphProperties,
+        _Morph_morphAttributes,
+        _Morph_morphNamespacedAttributes,
+      ]
+        .map(function (i) {
+          return i.toString();
+        })
+        .join("\n\n"),
+    ],
 
-  // ### https://github.com/elm/virtual-dom/issues/168
-  [
-    /var _VirtualDom_nodeNS = F2\(function\(namespace, tag\)\r?\n\{/,
-    "$& tag = _VirtualDom_noScript(tag);",
+    // ### https://github.com/elm/virtual-dom/issues/168
+    [
+      /var _VirtualDom_nodeNS = F2\(function\(namespace, tag\)\r?\n\{/,
+      "$& tag = _VirtualDom_noScript(tag);",
+    ],
   ],
-];
+  debuggerReplacements = [
+    ["var currPopout;", ""],
+    ["var cornerCurr = _VirtualDom_virtualize(cornerNode);", ""],
+    ["var cornerPatches = _VirtualDom_diff(cornerCurr, cornerNext);", ""],
+    [
+      "cornerNode = _VirtualDom_applyPatches(cornerNode, cornerCurr, cornerPatches, sendToApp);",
+      "cornerNode = _Morph_morphRootNode(cornerNode, cornerNext, sendToApp);",
+    ],
+    ["cornerCurr = cornerNext;", ""],
+    ["currPopout = undefined;", ""],
+    [
+      "currPopout || (currPopout = _VirtualDom_virtualize(model.popout.b));",
+      "",
+    ],
+    ["var popoutPatches = _VirtualDom_diff(currPopout, nextPopout);", ""],
+    [
+      "_VirtualDom_applyPatches(model.popout.b.body, currPopout, popoutPatches, sendToApp);",
+      "_Morph_morphRootNode(model.popout.b.body, nextPopout, sendToApp);",
+    ],
+    ["currPopout = nextPopout;", ""],
+  ];
 
 function _Morph_morphRootNode(domNode, nextNode, sendToApp) {
   var newNode = _Morph_morphNode(domNode, nextNode, sendToApp);
@@ -323,8 +326,6 @@ function _Morph_emptyState() {
 }
 
 function _Morph_morphNode(domNode, vNode, sendToApp) {
-  console.log("MORPH", vNode);
-
   switch (vNode.$) {
     // Html.text
     case 0:
@@ -760,7 +761,10 @@ var fs = require("fs"),
   path = require("path");
 
 function runReplacements(code) {
-  return replacements.reduce(strictReplace, code);
+  var newCode = replacements.reduce(strictReplace, code);
+  return code.includes("Compiled in DEBUG mode")
+    ? debuggerReplacements.reduce(strictReplace, newCode)
+    : newCode;
 }
 
 function strictReplace(code, tuple) {
