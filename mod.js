@@ -468,9 +468,10 @@ function _Morph_morphChildrenKeyed(
     }
   }
 
-  do {
-    refDomNode = parent.firstChild;
-  } while (refDomNode !== null && !_Morph_weakMap.has(refDomNode));
+  refDomNode = parent.firstChild;
+  while (refDomNode !== null && !_Morph_weakMap.has(refDomNode)) {
+    refDomNode = refDomNode.nextSibling;
+  }
 
   for (i = 0; i < children.length; i++) {
     child = children[i];
@@ -549,13 +550,12 @@ function _Morph_morphLazy(domNode, vNode, sendToApp, handleNonElmChild) {
     lazyRefs = state.lazy.l;
     i = lazyRefs.length;
     same = i === refs.length;
-    while (same && i-- > 0) {
+    while (same && --i >= 0) {
       same = lazyRefs[i] === refs[i];
     }
-  } else {
-    state = thunk();
   }
 
+  state = same ? vNode : thunk();
   state.lazy = vNode;
   return _Morph_morphNode(domNode, state, sendToApp, handleNonElmChild);
 }
