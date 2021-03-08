@@ -420,7 +420,7 @@ function _Morph_morphElement(domNode, vNode, sendToApp, handleNonElmChild) {
   ) {
     _Morph_morphFacts(domNode, state, facts, sendToApp);
     _Morph_morphChildrenKeyed(domNode, children, sendToApp, handleNonElmChild);
-    _Morph_weakMap.set(newNode, vNode);
+    _Morph_weakMap.set(domNode, vNode);
     return domNode;
   }
 
@@ -448,10 +448,10 @@ function _Morph_morphChildrenKeyed(
     map = new Map(),
     refDomNode = null,
     child,
-    state,
+    domNode,
     i,
-    next,
-    domNode;
+    newNode,
+    state;
 
   for (i = parent.childNodes.length - 1; i >= 0; i--) {
     child = parent.childNodes[i];
@@ -477,19 +477,24 @@ function _Morph_morphChildrenKeyed(
     domNode = map.get(child.key);
     if (domNode !== undefined) {
       map.delete(child.key);
-      next = _Morph_morphNode(domNode, child, sendToApp, handleNonElmChild);
-      if (domNode !== next) {
+      newNode = _Morph_morphNode(domNode, child, sendToApp, handleNonElmChild);
+      if (domNode !== newNode) {
         _Morph_weakMap.delete(domNode);
         parent.removeChild(domNode);
-        parent.insertBefore(next, refDomNode);
-      } else if (next.nextSibling !== refDomNode) {
-        parent.insertBefore(next, refDomNode);
+        parent.insertBefore(newNode, refDomNode);
+      } else if (newNode.nextSibling !== refDomNode) {
+        parent.insertBefore(newNode, refDomNode);
       }
     } else {
-      next = _Morph_morphNode(undefined, child, sendToApp, handleNonElmChild);
-      parent.insertBefore(next, refDomNode);
+      newNode = _Morph_morphNode(
+        undefined,
+        child,
+        sendToApp,
+        handleNonElmChild
+      );
+      parent.insertBefore(newNode, refDomNode);
     }
-    refDomNode = domNode.nextSibling;
+    refDomNode = newNode.nextSibling;
   }
 
   map.forEach(function (child) {
@@ -686,6 +691,7 @@ function _Morph_morphNamespacedAttributes(
   namespacedAttributes
 ) {
   var //
+    previousNamespacedAttributes = state.d.a4,
     key,
     namespace,
     pair,
@@ -696,22 +702,20 @@ function _Morph_morphNamespacedAttributes(
     pair = namespacedAttributes[key];
     namespace = pair.f;
     value = pair.o;
-    previousNamespace = state.namespacedAttributes.get(key);
+    previousNamespace = previousNamespacedAttributes[key];
     if (previousNamespace !== undefined && previousNamespace !== namespace) {
       domNode.removeAttributeNS(previousNamespace, key);
     }
     if (domNode.getAttributeNS(namespace, key) !== value) {
-      state.namespacedAttributes.set(key, namespace);
       domNode.setAttributeNS(namespace, key, value);
     }
   }
 
-  state.namespacedAttributes.forEach(function (namespace, key) {
+  for (key in previousNamespacedAttributes) {
     if (!(key in namespacedAttributes)) {
       domNode.removeAttributeNS(namespace, key);
-      state.namespacedAttributes.delete(key);
     }
-  });
+  }
 }
 
 function _VirtualDom_organizeFacts(factList) {
