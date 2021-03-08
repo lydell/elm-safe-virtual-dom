@@ -416,7 +416,7 @@ function _Morph_morphElement(domNode, vNode, sendToApp, handleNonElmChild) {
     domNode !== undefined &&
     domNode.namespaceURI === namespaceURI &&
     domNode.localName === nodeName &&
-    (state = _Morph_weakMap.get(domNode))
+    (state = _Morph_weakMap.get(domNode)) !== undefined
   ) {
     _Morph_morphFacts(domNode, state, facts, sendToApp);
     _Morph_morphChildrenKeyed(domNode, children, sendToApp, handleNonElmChild);
@@ -458,13 +458,11 @@ function _Morph_morphChildrenKeyed(
     state = _Morph_weakMap.get(child);
     if (state === undefined) {
       handleNonElmChild(child);
+    } else if (map.has(state.key)) {
+      _Morph_weakMap.delete(child);
+      parent.removeChild(child);
     } else {
-      if (map.has(state.key)) {
-        _Morph_weakMap.delete(child);
-        parent.removeChild(child);
-      } else {
-        map.set(state.key, child);
-      }
+      map.set(state.key, child);
     }
   }
 
