@@ -395,6 +395,7 @@ function _Morph_morphText(domNode, vNode) {
     if (domNode.data !== text) {
       domNode.data = text;
     }
+    _Morph_weakMap.set(domNode, vNode);
     return domNode;
   }
   newNode = _VirtualDom_doc.createTextNode(text);
@@ -557,7 +558,7 @@ function _Morph_morphLazy(domNode, vNode, sendToApp, handleNonElmChild) {
     }
   }
 
-  state = same ? vNode : thunk();
+  state = same ? state : thunk();
   state.lazy = vNode;
   return _Morph_morphNode(domNode, state, sendToApp, handleNonElmChild);
 }
