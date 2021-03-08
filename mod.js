@@ -30,7 +30,7 @@ var replacements = [
     // `upper` is the index of the last Elm element inside `<body>`.
     [
       "var bodyNode = _VirtualDom_doc.body;",
-      "var domNodes = [], domNodesToRemove = [], bounds = { lower: 0, upper: 0 };",
+      "var domNodes = [], domNodesToRemove = [], bounds = { lower: 0, upper: 0 }, handleNonElmChild = args && args.handleNonElmChild || _Morph_defaultHandleNonElmChild;",
     ],
     // `currNode` used to be the virtual DOM node for `bodyNode`. It’s not
     // needed because of the above. Remove it and instead introduce a mutation
@@ -43,15 +43,18 @@ var replacements = [
     // every Elm element inside `<body>`.
     [
       /var nextNode = _VirtualDom_node\('body'\)\(_List_Nil\)\(((?:[^)]|\)(?!;))+)\);\n.+\n.+\n[ \t]*currNode = nextNode;/,
-      "_Morph_morphBody($1, sendToApp, mutationObserver, domNodes, domNodesToRemove, bounds);",
+      "_Morph_morphBody($1, sendToApp, handleNonElmChild, mutationObserver, domNodes, domNodesToRemove, bounds);",
     ],
 
     // ### _Browser_element
-    ["var currNode = _VirtualDom_virtualize(domNode);", ""],
+    [
+      "var currNode = _VirtualDom_virtualize(domNode);",
+      "var handleNonElmChild = args && args.handleNonElmChild || _Morph_defaultHandleNonElmChild;",
+    ],
     ["var patches = _VirtualDom_diff(currNode, nextNode);", ""],
     [
       "domNode = _VirtualDom_applyPatches(domNode, currNode, patches, sendToApp);",
-      "domNode = _Morph_morphRootNode(domNode, nextNode, sendToApp);",
+      "domNode = _Morph_morphRootNode(domNode, nextNode, sendToApp, handleNonElmChild);",
     ],
     ["currNode = nextNode;", ""],
 
@@ -103,6 +106,7 @@ var replacements = [
         "var _Morph_weakMap = new WeakMap();",
         _Morph_observe,
         _Morph_nodeIndex,
+        _Morph_defaultHandleNonElmChild,
         _Morph_morphRootNode,
         _Morph_morphBody,
         _Morph_morphNode,
@@ -136,7 +140,7 @@ var replacements = [
     ["var cornerPatches = _VirtualDom_diff(cornerCurr, cornerNext);", ""],
     [
       "cornerNode = _VirtualDom_applyPatches(cornerNode, cornerCurr, cornerPatches, sendToApp);",
-      "cornerNode = _Morph_morphRootNode(cornerNode, cornerNext, sendToApp);",
+      "cornerNode = _Morph_morphRootNode(cornerNode, cornerNext, sendToApp, handleNonElmChild);",
     ],
     ["cornerCurr = cornerNext;", ""],
     ["currPopout = undefined;", ""],
@@ -147,13 +151,18 @@ var replacements = [
     ["var popoutPatches = _VirtualDom_diff(currPopout, nextPopout);", ""],
     [
       "_VirtualDom_applyPatches(model.popout.b.body, currPopout, popoutPatches, sendToApp);",
-      "_Morph_morphRootNode(model.popout.b.body, nextPopout, sendToApp);",
+      "_Morph_morphRootNode(model.popout.b.body, nextPopout, sendToApp, handleNonElmChild);",
     ],
     ["currPopout = nextPopout;", ""],
   ];
 
-function _Morph_morphRootNode(domNode, nextNode, sendToApp) {
-  var newNode = _Morph_morphNode(domNode, nextNode, sendToApp);
+function _Morph_morphRootNode(domNode, nextNode, sendToApp, handleNonElmChild) {
+  var newNode = _Morph_morphNode(
+    domNode,
+    nextNode,
+    sendToApp,
+    handleNonElmChild
+  );
   if (newNode !== domNode && domNode.parentNode !== null) {
     _Morph_weakMap.delete(domNode);
     domNode.parentNode.replaceChild(newNode, domNode);
@@ -164,6 +173,7 @@ function _Morph_morphRootNode(domNode, nextNode, sendToApp) {
 function _Morph_morphBody(
   body,
   sendToApp,
+  handleNonElmChild,
   mutationObserver,
   domNodes,
   domNodesToRemove,
@@ -214,7 +224,12 @@ function _Morph_morphBody(
     }
 
     // Patch and update state.
-    nextDomNode = _Morph_morphNode(domNode, nextVNode, sendToApp);
+    nextDomNode = _Morph_morphNode(
+      domNode,
+      nextVNode,
+      sendToApp,
+      handleNonElmChild
+    );
 
     if (
       domNode !== undefined &&
@@ -325,7 +340,13 @@ function _Morph_nodeIndex(node) {
   return i;
 }
 
-function _Morph_morphNode(domNode, vNode, sendToApp) {
+function _Morph_defaultHandleNonElmChild(child) {
+  if (child.nodeName === "FONT") {
+    child.parentNode.removeChild(child);
+  }
+}
+
+function _Morph_morphNode(domNode, vNode, sendToApp, handleNonElmChild) {
   switch (vNode.$) {
     // Html.text
     case 0:
@@ -334,7 +355,7 @@ function _Morph_morphNode(domNode, vNode, sendToApp) {
     // Html.div etc
     case 1:
     case 2:
-      return _Morph_morphElement(domNode, vNode, sendToApp);
+      return _Morph_morphElement(domNode, vNode, sendToApp, handleNonElmChild);
 
     // Markdown.toHtml etc
     case 3:
@@ -355,7 +376,7 @@ function _Morph_morphNode(domNode, vNode, sendToApp) {
 
     // Html.Lazy.lazy etc
     case 5:
-      return _Morph_morphLazy(domNode, vNode, sendToApp);
+      return _Morph_morphLazy(domNode, vNode, sendToApp, handleNonElmChild);
 
     default:
       throw new Error("Unknown vNode.$: " + vNode.$);
@@ -381,7 +402,7 @@ function _Morph_morphText(domNode, vNode) {
   return newNode;
 }
 
-function _Morph_morphElement(domNode, vNode, sendToApp) {
+function _Morph_morphElement(domNode, vNode, sendToApp, handleNonElmChild) {
   var //
     nodeName = vNode.c,
     namespaceURI =
@@ -398,7 +419,7 @@ function _Morph_morphElement(domNode, vNode, sendToApp) {
     (state = _Morph_weakMap.get(domNode))
   ) {
     _Morph_morphFacts(domNode, state, facts, sendToApp);
-    _Morph_morphChildrenKeyed(domNode, children, sendToApp);
+    _Morph_morphChildrenKeyed(domNode, children, sendToApp, handleNonElmChild);
     _Morph_weakMap.set(newNode, vNode);
     return domNode;
   }
@@ -412,12 +433,17 @@ function _Morph_morphElement(domNode, vNode, sendToApp) {
   }
 
   _Morph_morphFacts(newNode, state, facts, sendToApp);
-  _Morph_morphChildrenKeyed(newNode, children, sendToApp);
+  _Morph_morphChildrenKeyed(newNode, children, sendToApp, handleNonElmChild);
 
   return newNode;
 }
 
-function _Morph_morphChildrenKeyed(parent, children, sendToApp) {
+function _Morph_morphChildrenKeyed(
+  parent,
+  children,
+  sendToApp,
+  handleNonElmChild
+) {
   var //
     map = new Map(),
     refDomNode = null,
@@ -431,8 +457,7 @@ function _Morph_morphChildrenKeyed(parent, children, sendToApp) {
     child = parent.childNodes[i];
     state = _Morph_weakMap.get(child);
     if (state === undefined) {
-      // TODO: Remove using the provided function
-      parent.removeChild(child);
+      handleNonElmChild(child);
     } else {
       if (map.has(state.key)) {
         _Morph_weakMap.delete(child);
@@ -452,7 +477,7 @@ function _Morph_morphChildrenKeyed(parent, children, sendToApp) {
     domNode = map.get(child.key);
     if (domNode !== undefined) {
       map.delete(child.key);
-      next = _Morph_morphNode(domNode, child, sendToApp);
+      next = _Morph_morphNode(domNode, child, sendToApp, handleNonElmChild);
       if (domNode !== next) {
         _Morph_weakMap.delete(domNode);
         parent.removeChild(domNode);
@@ -461,7 +486,7 @@ function _Morph_morphChildrenKeyed(parent, children, sendToApp) {
         parent.insertBefore(next, refDomNode);
       }
     } else {
-      next = _Morph_morphNode(undefined, child, sendToApp);
+      next = _Morph_morphNode(undefined, child, sendToApp, handleNonElmChild);
       parent.insertBefore(next, refDomNode);
     }
     refDomNode = domNode.nextSibling;
@@ -502,7 +527,7 @@ function _Morph_morphCustom(domNode, vNode, sendToApp) {
   return newNode;
 }
 
-function _Morph_morphLazy(domNode, vNode, sendToApp) {
+function _Morph_morphLazy(domNode, vNode, sendToApp, handleNonElmChild) {
   var //
     refs = vNode.l,
     thunk = vNode.m,
@@ -527,7 +552,7 @@ function _Morph_morphLazy(domNode, vNode, sendToApp) {
   }
 
   state.lazy = vNode;
-  return _Morph_morphNode(domNode, state, sendToApp);
+  return _Morph_morphNode(domNode, state, sendToApp, handleNonElmChild);
 }
 
 function _Morph_morphFacts(domNode, state, facts, sendToApp) {
