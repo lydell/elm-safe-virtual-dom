@@ -10,51 +10,24 @@
   Map,
 */
 
-// Inspired by:
-// https://github.com/jinjor/elm-break-dom/tree/0fef8cea8c57841e32c878febca34cf25af664a2#appendix-hacky-patch-for-browserapplication
 // The JavaScript we’re mucking with:
 // https://github.com/elm/browser/blob/1d28cd625b3ce07be6dfad51660bea6de2c905f2/src/Elm/Kernel/Browser.js
-// And:
 // https://github.com/elm/browser/blob/1d28cd625b3ce07be6dfad51660bea6de2c905f2/src/Elm/Kernel/Debugger.js
-// So there should be up to 2 matches for every replacement.
+// https://github.com/elm/virtual-dom/blob/5a5bcf48720bc7d53461b3cd42a9f19f119c5503/src/Elm/Kernel/VirtualDom.js
 var replacements = [
-    // ### _Browser_document
-    // Instead of keeping track of only the `<body>` element, keep track of all
-    // elements directly inside `<body>` that Elm renders. `domNodes` and
-    // `vNodes` (virtual DOM nodes) are parallel lists: They always have the
-    // same length and items at the same index correspond to each other.
-    // `domNodesToRemove` is a list of elements that have replaced Elm elements.
-    // Google Translate does this – it replaces text nodes with `<font>`
-    // elements. If you have text nodes directly in `<body>` this is needed.
-    // `lower` is the index of the first Elm element inside `<body>`.
-    // `upper` is the index of the last Elm element inside `<body>`.
+    // ### _Browser_element / _Browser_document
     [
-      "var bodyNode = _VirtualDom_doc.body;",
-      "var domNodes = [], domNodesToRemove = [], bounds = { lower: 0, upper: 0 }, handleNonElmChild = args && args.handleNonElmChild || _Morph_defaultHandleNonElmChild;",
-    ],
-    // `currNode` used to be the virtual DOM node for `bodyNode`. It’s not
-    // needed because of the above. Remove it and instead introduce a mutation
-    // observer (see the `_Morph_observe` function) and a `_Morph_nodeIndex` helper function.
-    [
-      "var currNode = _VirtualDom_virtualize(bodyNode);",
-      "var mutationObserver = new MutationObserver(function (records) { _Morph_observe(records, domNodesToRemove, bounds); });",
-    ],
-    // On rerender, instead of patching the whole `<body>` element, instead patch
-    // every Elm element inside `<body>`.
-    [
-      /var nextNode = _VirtualDom_node\('body'\)\(_List_Nil\)\(((?:[^)]|\)(?!;))+)\);\n.+\n.+\n[ \t]*currNode = nextNode;/,
-      "_Morph_morphBody($1, sendToApp, handleNonElmChild, mutationObserver, domNodes, domNodesToRemove, bounds);",
-    ],
-
-    // ### _Browser_element
-    [
-      "var currNode = _VirtualDom_virtualize(domNode);",
+      /var currNode = _VirtualDom_virtualize\((dom|body)Node\);/g,
       "var handleNonElmChild = args && args.handleNonElmChild || _Morph_defaultHandleNonElmChild;",
     ],
     ["var patches = _VirtualDom_diff(currNode, nextNode);", ""],
     [
       "domNode = _VirtualDom_applyPatches(domNode, currNode, patches, sendToApp);",
       "domNode = _Morph_morphRootNode(domNode, nextNode, sendToApp, handleNonElmChild);",
+    ],
+    [
+      "bodyNode = _VirtualDom_applyPatches(bodyNode, currNode, patches, sendToApp);",
+      "bodyNode = _Morph_morphRootNode(bodyNode, nextNode, sendToApp, handleNonElmChild);",
     ],
     ["currNode = nextNode;", ""],
 
@@ -104,11 +77,8 @@ var replacements = [
       [
         "var _VirtualDom_divertHrefToApp;",
         "var _Morph_weakMap = new WeakMap();",
-        _Morph_observe,
-        _Morph_nodeIndex,
         _Morph_defaultHandleNonElmChild,
         _Morph_morphRootNode,
-        _Morph_morphBody,
         _Morph_morphNode,
         _Morph_morphText,
         _Morph_morphElement,
@@ -157,6 +127,7 @@ var replacements = [
   ];
 
 function _Morph_morphRootNode(domNode, nextNode, sendToApp, handleNonElmChild) {
+  _Morph_weakMap.set(domNode, nextNode);
   var newNode = _Morph_morphNode(
     domNode,
     nextNode,
@@ -168,176 +139,6 @@ function _Morph_morphRootNode(domNode, nextNode, sendToApp, handleNonElmChild) {
     domNode.parentNode.replaceChild(newNode, domNode);
   }
   return newNode;
-}
-
-function _Morph_morphBody(
-  body,
-  sendToApp,
-  handleNonElmChild,
-  mutationObserver,
-  domNodes,
-  domNodesToRemove,
-  bounds
-) {
-  var //
-    domNode,
-    exists,
-    i,
-    length,
-    nextDomNode,
-    nextVNode,
-    previousDomNode;
-
-  // We don’t want to be notified about changes to the DOM we make ourselves.
-  mutationObserver.disconnect();
-
-  // Remove elements that have replaced Elm elements. (See the `observe`
-  // function.)
-  for (i = 0; i < domNodesToRemove.length; i++) {
-    domNode = domNodesToRemove[i];
-    if (domNode.parentNode === _VirtualDom_doc.body) {
-      domNode.parentNode.removeChild(domNode);
-    }
-  }
-  domNodesToRemove.length = 0;
-
-  // This kind of loop is common in Elm Kernel code and usually marked with
-  // “WHILE_CONS”. `body` is a linked list – it’s from `Browser.Document`:
-  // `{ title = "Title", body = [ Html.div [] [], Html.text "Hello!" ] }`
-  // eslint-disable-next-line no-restricted-syntax
-  for (i = 0; body.b; body = body.b, i++) {
-    nextVNode = body.a;
-
-    // When we’ve rendered `body` before, we might have DOM and Virtual DOM
-    // nodes from before that should be patched rather than creating stuff from
-    // scratch. The first render `domNodes` and `vNodes` are going to be empty,
-    // so then we _only_ create new stuff.
-    exists = i < domNodes.length;
-    domNode = undefined;
-    if (exists) {
-      domNode = domNodes[i];
-      if (domNode.parentNode !== _VirtualDom_doc.body) {
-        // Some script has (re-)moved/replaced our DOM node, so we need to make
-        // one from scratch after all.
-        exists = false;
-      }
-    }
-
-    // Patch and update state.
-    nextDomNode = _Morph_morphNode(
-      domNode,
-      nextVNode,
-      sendToApp,
-      handleNonElmChild
-    );
-
-    if (
-      domNode !== undefined &&
-      domNode !== nextDomNode &&
-      domNode.parentNode === _VirtualDom_doc.body
-    ) {
-      _Morph_weakMap.delete(domNode);
-      domNode.parentNode.removeChild(domNode);
-      exists = false;
-    }
-
-    if (!exists) {
-      // Insert the new element into the page.
-      // If this is the first of Elm’s elements, add it at the start of
-      // `<body>`. Otherwise, put it after the element we worked on in the
-      // previous loop iteration. Note: If `nextDomNode.nextSibling` is
-      // `null` it means that `nextDomNode` is the last child of `<body>`.
-      // `insertBefore` inserts the element last when the second argument
-      // is `null`.
-      _VirtualDom_doc.body.insertBefore(
-        nextDomNode,
-        previousDomNode === undefined
-          ? _VirtualDom_doc.body.firstChild
-          : previousDomNode.nextSibling
-      );
-    }
-
-    domNodes[i] = nextDomNode;
-    previousDomNode = nextDomNode;
-
-    if (i === 0) {
-      bounds.lower = _Morph_nodeIndex(nextDomNode);
-    }
-  }
-
-  bounds.upper = _Morph_nodeIndex(nextDomNode);
-
-  // If the previous render had more children in `<body>` than now, remove the
-  // excess elements.
-  if (i < domNodes.length) {
-    length = i;
-    for (; i < domNodes.length; i++) {
-      domNode = domNodes[i];
-      if (domNode.parentNode !== null) {
-        _Morph_weakMap.delete(domNode);
-        domNode.parentNode.removeChild(domNode);
-      }
-    }
-    domNodes.length = length;
-  }
-
-  // Enable the mutation observer again. It listens for node additions and
-  // removals directly inside `<body>`.
-  mutationObserver.observe(_VirtualDom_doc.body, { childList: true });
-}
-
-function _Morph_observe(records, domNodesToRemove, bounds) {
-  var //
-    found = false,
-    i,
-    index,
-    j,
-    node,
-    record;
-
-  // See if any of Elm’s elements have been removed by some script or extension.
-  for (i = 0; i < records.length; i++) {
-    record = records[i];
-    for (j = 0; j < record.removedNodes.length; j++) {
-      node = record.removedNodes[j];
-      if (_Morph_weakMap.has(node)) {
-        found = true;
-        break;
-      }
-    }
-  }
-
-  // If one of Elm’s DOM nodes were removed, don’t trust any nodes added at the
-  // same time. Some of them might have replaced Elm’s elements.
-  // For Google Translate, the `<font>` tags appear as additions _before_ Elm’s
-  // text nodes appear as removals.
-  if (found) {
-    for (i = 0; i < records.length; i++) {
-      record = records[i];
-      for (j = 0; j < record.addedNodes.length; j++) {
-        node = record.addedNodes[j];
-        // If one of Elm’s elements has been inserted, redraw it completely to
-        // protect against reordering done by a script or extension.
-        if (_Morph_weakMap.has(node)) {
-          domNodesToRemove.push(node);
-        } else {
-          // But don’t apply this to nodes before or after Elm’s range of nodes.
-          // This way we don’t remove the two `<div>`s inserted by Google
-          // Translate. This is why we track `lower` and `upper`.
-          index = _Morph_nodeIndex(node);
-          if (index >= bounds.lower && index <= bounds.upper) {
-            domNodesToRemove.push(node);
-          }
-        }
-      }
-    }
-  }
-}
-
-function _Morph_nodeIndex(node) {
-  // https://stackoverflow.com/a/5913984/2010616
-  for (var i = 0; (node = node.previousSibling) !== null; i++);
-  return i;
 }
 
 function _Morph_defaultHandleNonElmChild(child) {
