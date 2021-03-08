@@ -479,8 +479,12 @@ function _Morph_morphChildrenKeyed(
       newNode = _Morph_morphNode(domNode, child, sendToApp, handleNonElmChild);
       if (domNode !== newNode) {
         _Morph_weakMap.delete(domNode);
-        parent.removeChild(domNode);
-        parent.insertBefore(newNode, refDomNode);
+        if (domNode === refDomNode) {
+          parent.replaceChild(newNode, domNode);
+        } else {
+          parent.removeChild(domNode);
+          parent.insertBefore(newNode, refDomNode);
+        }
       } else if (newNode.nextSibling !== refDomNode) {
         parent.insertBefore(newNode, refDomNode);
       }
