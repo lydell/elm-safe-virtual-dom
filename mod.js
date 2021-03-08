@@ -485,7 +485,7 @@ function _Morph_morphChildrenKeyed(
           parent.removeChild(domNode);
           parent.insertBefore(newNode, refDomNode);
         }
-      } else if (newNode.nextSibling !== refDomNode) {
+      } else if (newNode !== refDomNode && newNode.nextSibling !== refDomNode) {
         parent.insertBefore(newNode, refDomNode);
       }
     } else {
