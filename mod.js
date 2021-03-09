@@ -362,6 +362,7 @@ function _Morph_morphLazy(domNode, vNode, sendToApp, handleNonElmChild) {
   }
 
   state = same ? state : thunk();
+  state.key = vNode.key;
   state.lazy = vNode;
   return _Morph_morphNode(domNode, state, sendToApp, handleNonElmChild);
 }
