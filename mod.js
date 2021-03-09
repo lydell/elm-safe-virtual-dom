@@ -172,7 +172,8 @@ function _Morph_morphNode(domNode, vNode, sendToApp, handleNonElmChild) {
         actualVNode,
         function (message, stopPropagation) {
           return sendToApp(tagger(message), stopPropagation);
-        }
+        },
+        handleNonElmChild
       );
     }
 
