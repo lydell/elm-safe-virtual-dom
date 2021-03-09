@@ -166,6 +166,7 @@ function _Morph_morphNode(domNode, vNode, sendToApp, handleNonElmChild) {
     case 4: {
       var tagger = vNode.j,
         actualVNode = vNode.k;
+      actualVNode.key = vNode.key;
       return _Morph_morphNode(
         domNode,
         actualVNode,
