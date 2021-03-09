@@ -50,4 +50,5 @@ view model =
         , text (String.fromInt model.count)
         , button [ onClick Next ] [ text "Nästa" ]
         , input [ onInput Input, Html.Attributes.value model.text ] []
+        , a [ Html.Attributes.href "" ] [ Html.text "a" ]
         ]

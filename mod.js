@@ -428,12 +428,12 @@ function _Morph_morphStyles(domNode, state, styles) {
 
   for (key in styles) {
     value = styles[key];
-    if (
-      domNode.style.getPropertyValue(key) !== value ||
-      domNode.style.getPropertyPriority(key) !== ""
-    ) {
-      domNode.style.setProperty(key, value);
-    }
+    // if (
+    //   domNode.style.getPropertyValue(key) !== value ||
+    //   domNode.style.getPropertyPriority(key) !== ""
+    // ) {
+    domNode.style.setProperty(key, value);
+    // }
   }
 
   for (key in previousStyles) {
@@ -454,9 +454,9 @@ function _Morph_morphProperties(domNode, state, properties) {
 
   for (key in properties) {
     value = properties[key];
-    if (domNode[key] !== value) {
-      domNode[key] = value;
-    }
+    // if (domNode[key] !== value) {
+    domNode[key] = value;
+    // }
   }
 
   for (key in previousProperties) {
