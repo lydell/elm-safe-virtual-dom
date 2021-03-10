@@ -98,6 +98,14 @@ view model =
             , map Log (Html.button [ onClick 1, onClick 1 |> Html.Attributes.map ((+) 1) ] [ text ("karta: " ++ String.fromInt model.state) ])
             , Markdown.toHtml [ Html.Attributes.id "my-id" ] ("nedåt: " ++ String.fromInt model.state)
             , Svg.svg [ Svg.Attributes.xmlLang "en-US" ] []
+            , Html.a
+                (if model.state |> modBy 2 |> (==) 0 then
+                    []
+
+                 else
+                    [ Html.Attributes.href "#foo" ]
+                )
+                [ Html.text "Link" ]
             , Html.button
                 [ onClick NextState
                 , Html.Attributes.type_ "button"

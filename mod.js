@@ -464,7 +464,7 @@ function _Morph_morphProperties(domNode, state, properties) {
       if (defaultDomNode === undefined) {
         defaultDomNode = _VirtualDom_doc.createElementNS(
           domNode.namespaceURI,
-          domNode.nodeName
+          domNode.localName
         );
       }
       domNode[key] = defaultDomNode[key];
