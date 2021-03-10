@@ -238,14 +238,13 @@ function _Morph_morphElement(domNode, vNode, sendToApp, handleNonElmChild) {
   }
 
   newNode = _VirtualDom_doc.createElementNS(namespaceURI, nodeName);
-  state = vNode;
-  _Morph_weakMap.set(newNode, state);
+  _Morph_weakMap.set(newNode, vNode);
 
   if (_VirtualDom_divertHrefToApp && nodeName === "a") {
     newNode.addEventListener("click", _VirtualDom_divertHrefToApp(newNode));
   }
 
-  _Morph_morphFacts(newNode, state, facts, sendToApp);
+  _Morph_morphFacts(newNode, undefined, facts, sendToApp);
   _Morph_morphChildrenKeyed(newNode, children, sendToApp, handleNonElmChild);
 
   return newNode;
@@ -338,13 +337,13 @@ function _Morph_morphCustom(domNode, vNode, sendToApp) {
   ) {
     patch = diff(state.g, model);
     newNode = patch === false ? domNode : patch(domNode);
-  } else {
-    newNode = render(model);
-    state = vNode;
+    _Morph_morphFacts(newNode, state, facts, sendToApp);
+    return newNode;
   }
 
-  _Morph_weakMap.set(newNode, state);
-  _Morph_morphFacts(newNode, state, facts, sendToApp);
+  newNode = render(model);
+  _Morph_weakMap.set(newNode, vNode);
+  _Morph_morphFacts(newNode, undefined, facts, sendToApp);
   return newNode;
 }
 
@@ -377,17 +376,39 @@ function _Morph_morphLazy(domNode, vNode, sendToApp, handleNonElmChild) {
 }
 
 function _Morph_morphFacts(domNode, state, facts, sendToApp) {
-  _Morph_morphEvents(domNode, state, facts, sendToApp);
-  _Morph_morphStyles(domNode, state, facts.a1);
-  _Morph_morphProperties(domNode, state, facts.a2);
-  _Morph_morphAttributes(domNode, state, facts.a3);
-  _Morph_morphNamespacedAttributes(domNode, state, facts.a4);
+  var d =
+    state === undefined
+      ? { a0: {}, a1: {}, a2: {}, a3: {}, a4: {}, fns: {} }
+      : state.d;
+
+  // All of these are diffed against the previous virtual DOM rather than the
+  // actual DOM. This means that:
+  // - There might be excess events/styles/properties/attributes set by scripts or extensions.
+  // - styles/properties cannot be guaranteed to be set to the
+  //   correct value – a script or extension might have changed it, while the
+  //   virtual DOM still indicating that no change is needed.
+  //   Attributes still use `.getAttribute()` to compare to the actual DOM, though.
+  // - Styles might have been changed to `!important`.
+
+  // It’s not possible to inspect an elements event listeners.
+  _Morph_morphEvents(domNode, d.fns, facts, sendToApp);
+  // It’s hard to find which styles have been changed. They are also normalized
+  // when set, so `style[key] === domNode.style[key]` might _never_ be true!
+
+  _Morph_morphStyles(domNode, d.a1, facts.a1);
+  // Same as for styles. As an example, `.type = "foo"` is normalized to `"text"`.
+
+  _Morph_morphProperties(domNode, d.a2, facts.a2);
+
+  // There is a `.attributes` property, but `.type = "email"` adds a
+  // `type="email"` attribute that we shouldn’t remove.
+  _Morph_morphAttributes(domNode, d.a3, facts.a3);
+  _Morph_morphNamespacedAttributes(domNode, d.a4, facts.a4);
 }
 
-function _Morph_morphEvents(domNode, state, facts, sendToApp) {
+function _Morph_morphEvents(domNode, previousCallbacks, facts, sendToApp) {
   var //
     events = facts.a0,
-    previousCallbacks = state.d.fns,
     callback,
     eventName,
     handler,
@@ -429,20 +450,16 @@ function _Morph_morphEvents(domNode, state, facts, sendToApp) {
   }
 }
 
-function _Morph_morphStyles(domNode, state, styles) {
+function _Morph_morphStyles(domNode, previousStyles, styles) {
   var //
-    previousStyles = state.d.a1,
     key,
     value;
 
   for (key in styles) {
     value = styles[key];
-    // if (
-    //   domNode.style.getPropertyValue(key) !== value ||
-    //   domNode.style.getPropertyPriority(key) !== ""
-    // ) {
-    domNode.style.setProperty(key, value);
-    // }
+    if (value !== previousStyles[key]) {
+      domNode.style.setProperty(key, value);
+    }
   }
 
   for (key in previousStyles) {
@@ -454,18 +471,17 @@ function _Morph_morphStyles(domNode, state, styles) {
   return value !== undefined;
 }
 
-function _Morph_morphProperties(domNode, state, properties) {
+function _Morph_morphProperties(domNode, previousProperties, properties) {
   var //
-    previousProperties = state.d.a2,
     defaultDomNode,
     key,
     value;
 
   for (key in properties) {
     value = properties[key];
-    // if (domNode[key] !== value) {
-    domNode[key] = value;
-    // }
+    if (value !== previousProperties[key]) {
+      domNode[key] = value;
+    }
   }
 
   for (key in previousProperties) {
@@ -481,9 +497,8 @@ function _Morph_morphProperties(domNode, state, properties) {
   }
 }
 
-function _Morph_morphAttributes(domNode, state, attributes) {
+function _Morph_morphAttributes(domNode, previousAttributes, attributes) {
   var //
-    previousAttributes = state.d.a3,
     key,
     value;
 
@@ -503,11 +518,10 @@ function _Morph_morphAttributes(domNode, state, attributes) {
 
 function _Morph_morphNamespacedAttributes(
   domNode,
-  state,
+  previousNamespacedAttributes,
   namespacedAttributes
 ) {
   var //
-    previousNamespacedAttributes = state.d.a4,
     key,
     namespace,
     pair,
