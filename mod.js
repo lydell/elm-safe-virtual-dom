@@ -84,6 +84,7 @@ var replacements = [
         _Morph_morphElement,
         _Morph_morphChildrenKeyed,
         _Morph_morphCustom,
+        _Morph_morphMap,
         _Morph_morphLazy,
         _Morph_morphFacts,
         _Morph_morphEvents,
@@ -135,6 +136,12 @@ var replacements = [
     ["currPopout = nextPopout;", ""],
   ];
 
+function _Morph_defaultHandleNonElmChild(child) {
+  if (child.nodeName === "FONT") {
+    child.parentNode.removeChild(child);
+  }
+}
+
 function _Morph_morphRootNode(domNode, nextNode, sendToApp, handleNonElmChild) {
   _Morph_weakMap.set(domNode, nextNode);
   var newDomNode = _Morph_morphNode(
@@ -148,12 +155,6 @@ function _Morph_morphRootNode(domNode, nextNode, sendToApp, handleNonElmChild) {
     domNode.parentNode.replaceChild(newDomNode, domNode);
   }
   return newDomNode;
-}
-
-function _Morph_defaultHandleNonElmChild(child) {
-  if (child.nodeName === "FONT") {
-    child.parentNode.removeChild(child);
-  }
 }
 
 function _Morph_morphNode(domNode, vNode, sendToApp, handleNonElmChild) {
@@ -172,19 +173,8 @@ function _Morph_morphNode(domNode, vNode, sendToApp, handleNonElmChild) {
       return _Morph_morphCustom(domNode, vNode, sendToApp);
 
     // Html.map
-    case 4: {
-      var tagger = vNode.j,
-        actualVNode = vNode.k;
-      actualVNode.key = vNode.key;
-      return _Morph_morphNode(
-        domNode,
-        actualVNode,
-        function (message, stopPropagation) {
-          return sendToApp(tagger(message), stopPropagation);
-        },
-        handleNonElmChild
-      );
-    }
+    case 4:
+      return _Morph_morphMap(domNode, vNode, sendToApp, handleNonElmChild);
 
     // Html.Lazy.lazy etc
     case 5:
@@ -356,6 +346,23 @@ function _Morph_morphCustom(domNode, vNode, sendToApp) {
   _Morph_weakMap.set(newDomNode, vNode);
   _Morph_morphFacts(newDomNode, undefined, facts, sendToApp);
   return newDomNode;
+}
+
+function _Morph_morphMap(domNode, vNode, sendToApp, handleNonElmChild) {
+  var //
+    tagger = vNode.j,
+    actualVNode = vNode.k;
+
+  actualVNode.key = vNode.key;
+
+  return _Morph_morphNode(
+    domNode,
+    actualVNode,
+    function htmlMap(message, stopPropagation) {
+      return sendToApp(tagger(message), stopPropagation);
+    },
+    handleNonElmChild
+  );
 }
 
 function _Morph_morphLazy(domNode, vNode, sendToApp, handleNonElmChild) {
