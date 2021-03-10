@@ -103,6 +103,14 @@ var replacements = [
       /var _VirtualDom_nodeNS = F2\(function\(namespace, tag\)\r?\n\{/,
       "$& tag = _VirtualDom_noScript(tag);",
     ],
+
+    // ### https://github.com/elm/html/issues/228
+    // Judging by how React does things, everything using `stringProperty` should use `attribute` instead.
+    // https://github.com/facebook/react/blob/9198a5cec0936a21a5ba194a22fcbac03eba5d1d/packages/react-dom/src/shared/DOMProperty.js#L360-L383
+    [
+      /(var \$elm\$html\$Html\$Attributes\$stringProperty = F2\(\s*function \(key, string\) \{\s*return A2\(\s*)_VirtualDom_property(,\s*key,\s*)\$elm\$json\$Json\$Encode\$string\(string\)/,
+      "$1_VirtualDom_attribute$2string",
+    ],
   ],
   debuggerReplacements = [
     ["var currPopout;", ""],
