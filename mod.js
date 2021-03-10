@@ -137,17 +137,17 @@ var replacements = [
 
 function _Morph_morphRootNode(domNode, nextNode, sendToApp, handleNonElmChild) {
   _Morph_weakMap.set(domNode, nextNode);
-  var newNode = _Morph_morphNode(
+  var newDomNode = _Morph_morphNode(
     domNode,
     nextNode,
     sendToApp,
     handleNonElmChild
   );
-  if (newNode !== domNode && domNode.parentNode !== null) {
+  if (newDomNode !== domNode && domNode.parentNode !== null) {
     _Morph_weakMap.delete(domNode);
-    domNode.parentNode.replaceChild(newNode, domNode);
+    domNode.parentNode.replaceChild(newDomNode, domNode);
   }
-  return newNode;
+  return newDomNode;
 }
 
 function _Morph_defaultHandleNonElmChild(child) {
@@ -198,7 +198,7 @@ function _Morph_morphNode(domNode, vNode, sendToApp, handleNonElmChild) {
 function _Morph_morphText(domNode, vNode) {
   var //
     text = vNode.a,
-    newNode;
+    newDomNode;
   if (
     domNode !== undefined &&
     domNode.nodeType === 3 &&
@@ -210,9 +210,9 @@ function _Morph_morphText(domNode, vNode) {
     _Morph_weakMap.set(domNode, vNode);
     return domNode;
   }
-  newNode = _VirtualDom_doc.createTextNode(text);
-  _Morph_weakMap.set(newNode, vNode);
-  return newNode;
+  newDomNode = _VirtualDom_doc.createTextNode(text);
+  _Morph_weakMap.set(newDomNode, vNode);
+  return newDomNode;
 }
 
 function _Morph_morphElement(domNode, vNode, sendToApp, handleNonElmChild) {
@@ -222,32 +222,35 @@ function _Morph_morphElement(domNode, vNode, sendToApp, handleNonElmChild) {
       vNode.f === undefined ? "http://www.w3.org/1999/xhtml" : vNode.f,
     facts = vNode.d,
     children = vNode.e,
-    newNode,
-    state;
+    newDomNode,
+    prevNode;
 
   if (
     domNode !== undefined &&
     domNode.namespaceURI === namespaceURI &&
     domNode.localName === nodeName &&
-    (state = _Morph_weakMap.get(domNode)) !== undefined
+    (prevNode = _Morph_weakMap.get(domNode)) !== undefined
   ) {
-    _Morph_morphFacts(domNode, state, facts, sendToApp);
+    _Morph_morphFacts(domNode, prevNode, facts, sendToApp);
     _Morph_morphChildrenKeyed(domNode, children, sendToApp, handleNonElmChild);
     _Morph_weakMap.set(domNode, vNode);
     return domNode;
   }
 
-  newNode = _VirtualDom_doc.createElementNS(namespaceURI, nodeName);
-  _Morph_weakMap.set(newNode, vNode);
+  newDomNode = _VirtualDom_doc.createElementNS(namespaceURI, nodeName);
+  _Morph_weakMap.set(newDomNode, vNode);
 
   if (_VirtualDom_divertHrefToApp && nodeName === "a") {
-    newNode.addEventListener("click", _VirtualDom_divertHrefToApp(newNode));
+    newDomNode.addEventListener(
+      "click",
+      _VirtualDom_divertHrefToApp(newDomNode)
+    );
   }
 
-  _Morph_morphFacts(newNode, undefined, facts, sendToApp);
-  _Morph_morphChildrenKeyed(newNode, children, sendToApp, handleNonElmChild);
+  _Morph_morphFacts(newDomNode, undefined, facts, sendToApp);
+  _Morph_morphChildrenKeyed(newDomNode, children, sendToApp, handleNonElmChild);
 
-  return newNode;
+  return newDomNode;
 }
 
 function _Morph_morphChildrenKeyed(
@@ -262,19 +265,19 @@ function _Morph_morphChildrenKeyed(
     child,
     domNode,
     i,
-    newNode,
-    state;
+    newDomNode,
+    prevNode;
 
   for (i = parent.childNodes.length - 1; i >= 0; i--) {
     child = parent.childNodes[i];
-    state = _Morph_weakMap.get(child);
-    if (state === undefined) {
+    prevNode = _Morph_weakMap.get(child);
+    if (prevNode === undefined) {
       handleNonElmChild(child);
-    } else if (map.has(state.key)) {
+    } else if (map.has(prevNode.key)) {
       _Morph_weakMap.delete(child);
       parent.removeChild(child);
     } else {
-      map.set(state.key, child);
+      map.set(prevNode.key, child);
     }
   }
 
@@ -288,28 +291,36 @@ function _Morph_morphChildrenKeyed(
     domNode = map.get(child.key);
     if (domNode !== undefined) {
       map.delete(child.key);
-      newNode = _Morph_morphNode(domNode, child, sendToApp, handleNonElmChild);
-      if (domNode !== newNode) {
+      newDomNode = _Morph_morphNode(
+        domNode,
+        child,
+        sendToApp,
+        handleNonElmChild
+      );
+      if (domNode !== newDomNode) {
         _Morph_weakMap.delete(domNode);
         if (domNode === refDomNode) {
-          parent.replaceChild(newNode, domNode);
+          parent.replaceChild(newDomNode, domNode);
         } else {
           parent.removeChild(domNode);
-          parent.insertBefore(newNode, refDomNode);
+          parent.insertBefore(newDomNode, refDomNode);
         }
-      } else if (newNode !== refDomNode && newNode.nextSibling !== refDomNode) {
-        parent.insertBefore(newNode, refDomNode);
+      } else if (
+        newDomNode !== refDomNode &&
+        newDomNode.nextSibling !== refDomNode
+      ) {
+        parent.insertBefore(newDomNode, refDomNode);
       }
     } else {
-      newNode = _Morph_morphNode(
+      newDomNode = _Morph_morphNode(
         undefined,
         child,
         sendToApp,
         handleNonElmChild
       );
-      parent.insertBefore(newNode, refDomNode);
+      parent.insertBefore(newDomNode, refDomNode);
     }
-    refDomNode = newNode.nextSibling;
+    refDomNode = newDomNode.nextSibling;
   }
 
   map.forEach(function (child) {
@@ -324,27 +335,27 @@ function _Morph_morphCustom(domNode, vNode, sendToApp) {
     model = vNode.g,
     render = vNode.h,
     diff = vNode.i,
-    newNode,
+    newDomNode,
     patch,
-    state;
+    prevNode;
 
   if (
     domNode !== undefined &&
-    (state = _Morph_weakMap.get(domNode)) !== undefined &&
-    state !== undefined &&
-    state.$ === 3 &&
-    state.h === render
+    (prevNode = _Morph_weakMap.get(domNode)) !== undefined &&
+    prevNode !== undefined &&
+    prevNode.$ === 3 &&
+    prevNode.h === render
   ) {
-    patch = diff(state.g, model);
-    newNode = patch === false ? domNode : patch(domNode);
-    _Morph_morphFacts(newNode, state, facts, sendToApp);
-    return newNode;
+    patch = diff(prevNode.g, model);
+    newDomNode = patch === false ? domNode : patch(domNode);
+    _Morph_morphFacts(newDomNode, prevNode, facts, sendToApp);
+    return newDomNode;
   }
 
-  newNode = render(model);
-  _Morph_weakMap.set(newNode, vNode);
-  _Morph_morphFacts(newNode, undefined, facts, sendToApp);
-  return newNode;
+  newDomNode = render(model);
+  _Morph_weakMap.set(newDomNode, vNode);
+  _Morph_morphFacts(newDomNode, undefined, facts, sendToApp);
+  return newDomNode;
 }
 
 function _Morph_morphLazy(domNode, vNode, sendToApp, handleNonElmChild) {
@@ -354,14 +365,14 @@ function _Morph_morphLazy(domNode, vNode, sendToApp, handleNonElmChild) {
     same = false,
     i,
     lazyRefs,
-    state;
+    prevNode;
 
   if (
     domNode !== undefined &&
-    (state = _Morph_weakMap.get(domNode)) !== undefined &&
-    state.lazy !== undefined
+    (prevNode = _Morph_weakMap.get(domNode)) !== undefined &&
+    prevNode.lazy !== undefined
   ) {
-    lazyRefs = state.lazy.l;
+    lazyRefs = prevNode.lazy.l;
     i = lazyRefs.length;
     same = i === refs.length;
     while (same && --i >= 0) {
@@ -369,17 +380,17 @@ function _Morph_morphLazy(domNode, vNode, sendToApp, handleNonElmChild) {
     }
   }
 
-  state = same ? state : thunk();
-  state.key = vNode.key;
-  state.lazy = vNode;
-  return _Morph_morphNode(domNode, state, sendToApp, handleNonElmChild);
+  prevNode = same ? prevNode : thunk();
+  prevNode.key = vNode.key;
+  prevNode.lazy = vNode;
+  return _Morph_morphNode(domNode, prevNode, sendToApp, handleNonElmChild);
 }
 
-function _Morph_morphFacts(domNode, state, facts, sendToApp) {
+function _Morph_morphFacts(domNode, prevNode, facts, sendToApp) {
   var d =
-    state === undefined
+    prevNode === undefined
       ? { a0: {}, a1: {}, a2: {}, a3: {}, a4: {}, fns: {} }
-      : state.d;
+      : prevNode.d;
 
   // All of these are diffed against the previous virtual DOM rather than the
   // actual DOM. This means that:
