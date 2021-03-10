@@ -112,6 +112,17 @@ var replacements = [
       "var $elm$html$Html$Attributes$stringProperty =",
       "var _stringProperty_unused =",
     ],
+    // TODO: Need to go through all usages of stringProperty and check Elm name vs attribute name vs property name…
+    [
+      "$elm$html$Html$Attributes$stringProperty('className')",
+      "_VirtualDom_attribute('class')",
+      true,
+    ],
+    [
+      "$elm$html$Html$Attributes$stringProperty('htmlFor')",
+      "_VirtualDom_attribute('for')",
+      true,
+    ],
     ["$elm$html$Html$Attributes$stringProperty", "_VirtualDom_attribute"],
   ],
   debuggerReplacements = [
@@ -613,11 +624,12 @@ function strictReplace(code, tuple) {
   var //
     search = tuple[0],
     replacement = tuple[1],
+    allow0matches = tuple[2] === true,
     parts = code.split(search),
     content,
     filePath;
 
-  if (parts.length <= 1) {
+  if (!allow0matches && parts.length <= 1) {
     filePath = path.resolve("elm-virtual-dom-patch-error.txt");
     content = [
       "Patching Elm’s JS output to avoid virtual DOM errors caused by browser extensions failed!",
