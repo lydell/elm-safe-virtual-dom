@@ -40,7 +40,7 @@ update msg model =
             { model | count = model.count + 1 }
 
         Input text ->
-            { model | text = text }
+            { model | text = String.replace "!" "" text }
 
 
 view : Model -> Html Msg
@@ -50,5 +50,6 @@ view model =
         , text (String.fromInt model.count)
         , button [ onClick Next ] [ text "Nästa" ]
         , input [ onInput Input, Html.Attributes.value model.text ] []
+        , input [ Html.Attributes.type_ "checkbox", Html.Attributes.checked True, onCheck (always Next) ] []
         , a [ Html.Attributes.href "" ] [ Html.text "a" ]
         ]

@@ -108,11 +108,6 @@ var replacements = [
     // ### https://github.com/elm/html/issues/228
     // Judging by how React does things, everything using `stringProperty` should use `attribute` instead.
     // https://github.com/facebook/react/blob/9198a5cec0936a21a5ba194a22fcbac03eba5d1d/packages/react-dom/src/shared/DOMProperty.js#L360-L383
-    [
-      "var $elm$html$Html$Attributes$stringProperty =",
-      "var _stringProperty_unused =",
-      true,
-    ],
     // Some property names and attribute names differ.
     // https://github.com/facebook/react/blob/9198a5cec0936a21a5ba194a22fcbac03eba5d1d/packages/react-dom/src/shared/DOMProperty.js#L265-L272
     [
@@ -131,7 +126,14 @@ var replacements = [
       true,
     ],
     // The rest should work fine as-is.
-    ["$elm$html$Html$Attributes$stringProperty", "_VirtualDom_attribute", true],
+    // Except `value`. Typing into an input updates `.value`, but not the
+    // attribute. Same thing if you alter `.value` with code.
+    // (`.setAttribute("value", "x")` _only_ sets the attribute, not `.value`.)
+    [
+      /\$elm\$html\$Html\$Attributes\$stringProperty(\('(?!value)\w+'\))/g,
+      "_VirtualDom_attribute$1",
+      true,
+    ],
   ],
   debuggerReplacements = [
     ["var currPopout;", ""],
@@ -419,22 +421,23 @@ function _Morph_morphFacts(domNode, prevNode, facts, sendToApp) {
       : prevNode.d;
 
   // All of these are diffed against the previous virtual DOM rather than the
-  // actual DOM. This means that:
+  // actual DOM in some cases. This means that:
   // - There might be excess events/styles/properties/attributes set by scripts or extensions.
-  // - styles/properties cannot be guaranteed to be set to the
-  //   correct value – a script or extension might have changed it, while the
-  //   virtual DOM still indicating that no change is needed.
-  //   Attributes still use `.getAttribute()` to compare to the actual DOM, though.
-  // - Styles might have been changed to `!important`.
+  // - styles cannot be guaranteed to be set to the correct value – a script or
+  //   extension might have changed it, while the virtual DOM still indicating
+  //   that no change is needed. They might also be changed to `!important`.
+  // - Attributes still use `.getAttribute()` to compare to the actual DOM,
+  //   though. And properties compare to the actual DOM too – see
+  //   `_Morph_morphProperties`.
 
   // It’s not possible to inspect an elements event listeners.
   _Morph_morphEvents(domNode, d.fns, facts, sendToApp);
+
   // It’s hard to find which styles have been changed. They are also normalized
   // when set, so `style[key] === domNode.style[key]` might _never_ be true!
-
   _Morph_morphStyles(domNode, d.a1, facts.a1);
-  // Same as for styles. As an example, `.type = "foo"` is normalized to `"text"`.
 
+  // Basically the same as styles, but also see the comment in this function.
   _Morph_morphProperties(domNode, d.a2, facts.a2);
 
   // There is a `.attributes` property, but `.type = "email"` adds a
@@ -516,7 +519,15 @@ function _Morph_morphProperties(domNode, previousProperties, properties) {
 
   for (key in properties) {
     value = properties[key];
-    if (value !== previousProperties[key]) {
+    // `value`, `checked`, `selected` and `selectedIndex` can all change via user
+    // interactions, so for those it’s important to compare to the actual DOM
+    // value. Other properties, such as `type`, is normalized, so a bad `type`
+    // property causes re-assignment every re-render. But that shouldn’t matter
+    // much: You should use `attribute` for that property, and if this becomes a
+    // performance problem (which I doubt) you could just set the
+    // normalized/correct value from the start.
+    // As an example, `.type = "foo"` is normalized to `"text"`.
+    if (value !== domNode[key]) {
       domNode[key] = value;
     }
   }
