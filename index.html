@@ -75,7 +75,10 @@
         "custom-element",
         class extends HTMLElement {
           connectedCallback() {
-            console.log("Setting custom-element content");
+            console.log(
+              "Setting custom-element content. Previous content:",
+              this.innerHTML
+            );
             this.innerHTML = "Content inside custom element.";
           }
         }

@@ -273,12 +273,6 @@ function _Morph_morphChildrenKeyed(
   sendToApp,
   handleNonElmChild
 ) {
-  // Don’t touch the insides of custom elements (they always have a dash in
-  // their names, while no standard HTML elements do).
-  if (parent.localName.indexOf("-") !== -1) {
-    return;
-  }
-
   var //
     map = new Map(),
     refDomNode = null,
