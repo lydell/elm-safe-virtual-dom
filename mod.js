@@ -112,7 +112,13 @@ var replacements = [
       "var $elm$html$Html$Attributes$stringProperty =",
       "var _stringProperty_unused =",
     ],
-    // TODO: Need to go through all usages of stringProperty and check Elm name vs attribute name vs property name…
+    // Some property names and attribute names differ.
+    // https://github.com/facebook/react/blob/9198a5cec0936a21a5ba194a22fcbac03eba5d1d/packages/react-dom/src/shared/DOMProperty.js#L265-L272
+    [
+      "$elm$html$Html$Attributes$stringProperty('acceptCharset')",
+      "_VirtualDom_attribute('accept-charset')",
+      true,
+    ],
     [
       "$elm$html$Html$Attributes$stringProperty('className')",
       "_VirtualDom_attribute('class')",
@@ -123,6 +129,7 @@ var replacements = [
       "_VirtualDom_attribute('for')",
       true,
     ],
+    // The rest should work fine as-is.
     ["$elm$html$Html$Attributes$stringProperty", "_VirtualDom_attribute"],
   ],
   debuggerReplacements = [
