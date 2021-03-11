@@ -70,13 +70,17 @@
           )
         );
       };
-      // HTMLFontElement.prototype.replaceData = function replaceData(
-      //   _1,
-      //   _2,
-      //   text
-      // ) {
-      //   this.parentNode.replaceChild(document.createTextNode(text), this);
-      // };
+
+      customElements.define(
+        "custom-element",
+        class extends HTMLElement {
+          connectedCallback() {
+            console.log("Setting custom-element content");
+            this.innerHTML = "Content inside custom element.";
+          }
+        }
+      );
+
       if (Elm.Main) {
         Elm.Main.init();
       } else if (Elm.Sandbox) {
@@ -84,6 +88,7 @@
       } else {
         throw new Error("No known Elm module", Elm);
       }
+
       setTimeout(() => {
         document.body.appendChild(document.createElement("hr"));
       });

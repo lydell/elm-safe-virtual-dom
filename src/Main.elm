@@ -106,6 +106,7 @@ view model =
                     [ Html.Attributes.href "#foo" ]
                 )
                 [ Html.text "Link" ]
+            , Html.node "custom-element" [ Html.Attributes.class "yoyo" ] []
             , Html.button
                 [ onClick NextState
                 , Html.Attributes.type_ "button"
