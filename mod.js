@@ -129,6 +129,9 @@ var replacements = [
     // Except `value`. Typing into an input updates `.value`, but not the
     // attribute. Same thing if you alter `.value` with code.
     // (`.setAttribute("value", "x")` _only_ sets the attribute, not `.value`.)
+    // See also:
+    // https://github.com/facebook/react/issues/13525
+    // https://github.com/facebook/react/issues/11896
     [
       /\$elm\$html\$Html\$Attributes\$stringProperty(\('(?!value)\w+'\))/g,
       "_VirtualDom_attribute$1",
