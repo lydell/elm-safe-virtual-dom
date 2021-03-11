@@ -111,6 +111,7 @@ var replacements = [
     [
       "var $elm$html$Html$Attributes$stringProperty =",
       "var _stringProperty_unused =",
+      true,
     ],
     // Some property names and attribute names differ.
     // https://github.com/facebook/react/blob/9198a5cec0936a21a5ba194a22fcbac03eba5d1d/packages/react-dom/src/shared/DOMProperty.js#L265-L272
@@ -130,7 +131,7 @@ var replacements = [
       true,
     ],
     // The rest should work fine as-is.
-    ["$elm$html$Html$Attributes$stringProperty", "_VirtualDom_attribute"],
+    ["$elm$html$Html$Attributes$stringProperty", "_VirtualDom_attribute", true],
   ],
   debuggerReplacements = [
     ["var currPopout;", ""],
@@ -621,6 +622,9 @@ var fs = require("fs"),
   path = require("path");
 
 function runReplacements(code) {
+  if (!/^function _Browser_/m.test(code)) {
+    throw new Error("The Elm code needs `import Browser`.");
+  }
   var newCode = replacements.reduce(strictReplace, code);
   return code.includes("Compiled in DEBUG mode")
     ? debuggerReplacements.reduce(strictReplace, newCode)
