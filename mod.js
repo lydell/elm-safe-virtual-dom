@@ -168,6 +168,7 @@ function _Morph_defaultHandleNonElmChild(child) {
 }
 
 function _Morph_morphRootNode(domNode, nextNode, sendToApp, handleNonElmChild) {
+  console.time("_Morph_morphRootNode");
   _Morph_weakMap.set(domNode, nextNode);
   var newDomNode = _Morph_morphNode(
     domNode,
@@ -179,6 +180,7 @@ function _Morph_morphRootNode(domNode, nextNode, sendToApp, handleNonElmChild) {
     _Morph_weakMap.delete(domNode);
     domNode.parentNode.replaceChild(newDomNode, domNode);
   }
+  console.timeEnd("_Morph_morphRootNode");
   return newDomNode;
 }
 
