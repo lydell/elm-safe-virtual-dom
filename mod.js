@@ -82,6 +82,7 @@ var replacements = [
         _Morph_morphNode,
         _Morph_morphText,
         _Morph_morphElement,
+        _Morph_addChildren,
         _Morph_morphChildrenKeyed,
         _Morph_morphCustom,
         _Morph_morphMap,
@@ -246,7 +247,16 @@ function _Morph_morphElement(domNode, vNode, sendToApp, handleNonElmChild) {
     (prevNode = _Morph_weakMap.get(domNode)) !== undefined
   ) {
     _Morph_morphFacts(domNode, prevNode, facts, sendToApp);
-    _Morph_morphChildrenKeyed(domNode, children, sendToApp, handleNonElmChild);
+    if (domNode.firstChild === null) {
+      _Morph_addChildren(domNode, children, sendToApp, handleNonElmChild);
+    } else {
+      _Morph_morphChildrenKeyed(
+        domNode,
+        children,
+        sendToApp,
+        handleNonElmChild
+      );
+    }
     _Morph_weakMap.set(domNode, vNode);
     return domNode;
   }
@@ -262,9 +272,17 @@ function _Morph_morphElement(domNode, vNode, sendToApp, handleNonElmChild) {
   }
 
   _Morph_morphFacts(newDomNode, undefined, facts, sendToApp);
-  _Morph_morphChildrenKeyed(newDomNode, children, sendToApp, handleNonElmChild);
+  _Morph_addChildren(newDomNode, children, sendToApp, handleNonElmChild);
 
   return newDomNode;
+}
+
+function _Morph_addChildren(parent, children, sendToApp, handleNonElmChild) {
+  for (var i = 0; i < children.length; i++) {
+    parent.appendChild(
+      _Morph_morphNode(undefined, children[i], sendToApp, handleNonElmChild)
+    );
+  }
 }
 
 function _Morph_morphChildrenKeyed(
