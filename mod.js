@@ -261,6 +261,7 @@ function _Morph_morphElement(
 
   if (
     domNode !== undefined &&
+    domNode.nodeType === 1 &&
     domNode.namespaceURI === namespaceURI &&
     domNode.localName === nodeName &&
     (prevNode = _Morph_weakMap.get(domNode)) !== undefined
