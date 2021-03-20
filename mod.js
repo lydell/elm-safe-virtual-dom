@@ -425,6 +425,7 @@ function _Morph_morphChildrenKeyed(
         );
         parent.insertBefore(newDomNode, domNode);
         i++;
+        i2++;
         j++;
       } else {
         stuck = true;
