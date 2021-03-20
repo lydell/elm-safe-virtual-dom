@@ -351,6 +351,9 @@ function _Morph_morphChildren(
   }
 }
 
+// This runs from both ends as far as it can: https://neil.fraser.name/writing/diff/
+// A swap can get us going again: https://github.com/localvoid/kivi/blob/master/lib/vnode.ts#L1288-L1318
+// If we get stuck, use the slower _Morph_morphChildrenKeyedMapped technique for the rest.
 function _Morph_morphChildrenKeyed(
   parent,
   parentVNode,
