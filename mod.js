@@ -786,13 +786,23 @@ function _Morph_morphStyles(domNode, previousStyles, styles) {
   for (key in styles) {
     value = styles[key];
     if (value !== previousStyles[key]) {
-      domNode.style.setProperty(key, value);
+      // Support `Html.Attributes.style "borderRadius" "5px"`.
+      // `.setProperty` requires "border-radius" with a dash.
+      if (key in domNode.style) {
+        domNode.style[key] = value;
+      } else {
+        domNode.style.setProperty(key, value);
+      }
     }
   }
 
   for (key in previousStyles) {
     if (!(key in styles)) {
-      domNode.style.removeProperty(key);
+      if (key in domNode.style) {
+        domNode.style[key] = "";
+      } else {
+        domNode.style.removeProperty(key);
+      }
     }
   }
 
@@ -1007,4 +1017,8 @@ function overwrite(file, transform) {
   fs.writeFileSync(file, transform(fs.readFileSync(file, "utf8")));
 }
 
-overwrite(process.argv[2], runReplacements);
+if (require.main === module) {
+  overwrite(process.argv[2], runReplacements);
+} else {
+  module.exports = runReplacements;
+}
