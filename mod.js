@@ -556,7 +556,6 @@ function _Morph_morphChildrenKeyedMapped(
     child = children[j];
     domNode = map.get(child.key);
     if (domNode !== undefined) {
-      map.delete(child.key);
       newDomNode = _Morph_morphNode(
         domNode,
         child,
