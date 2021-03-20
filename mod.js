@@ -7,7 +7,9 @@
   _VirtualDom_makeCallback,
   _VirtualDom_passiveSupported,
   $elm$virtual_dom$VirtualDom$toHandlerInt,
+  F2,
   Map,
+  Set,
 */
 
 // The JavaScript we’re mucking with:
@@ -55,20 +57,12 @@ var replacements = [
       "",
     ],
 
-    // ### _VirtualDom_nodeNS
-    [
-      "for (var kids = [], descendantsCount = 0; kidList.b; kidList = kidList.b)",
-      "for (var kids = [], descendantsCount = 0, index = 0; kidList.b; kidList = kidList.b, index++)",
-    ],
-    [
-      "descendantsCount += (kid.b || 0);",
-      "descendantsCount += (kid.b || 0); kid.key = '_Morph_default_key_' + index;",
-    ],
-
     // ### _VirtualDom_keyedNodeNS
     [
-      /(descendantsCount \+= \(kid\.b\.b \|\| 0\));\s+kids\.push\(kid\);/,
-      "$1; kid.b.key = kid.a; kids.push(kid.b);",
+      /var _VirtualDom_keyedNodeNS = F2\(function\(namespace, tag\)\r?\n\{(\r?\n([\t ][^\n]+)?)+\r?\n\}\);/,
+      "var _VirtualDom_keyedNodeNS = " +
+        _VirtualDom_keyedNodeNS.toString() +
+        "();",
     ],
 
     // ### Insert functions
@@ -85,6 +79,7 @@ var replacements = [
         _Morph_addChildren,
         _Morph_morphChildren,
         _Morph_morphChildrenKeyed,
+        _Morph_morphChildrenKeyedMapped,
         _Morph_morphCustom,
         _Morph_morphMap,
         _Morph_morphLazy,
@@ -274,7 +269,7 @@ function _Morph_morphElement(
     if (domNode.firstChild === null) {
       _Morph_addChildren(domNode, children, sendToApp, handleNonElmChild);
     } else {
-      morphChildren(domNode, children, sendToApp, handleNonElmChild);
+      morphChildren(domNode, vNode, children, sendToApp, handleNonElmChild);
     }
     _Morph_weakMap.set(domNode, vNode);
     return domNode;
@@ -304,7 +299,13 @@ function _Morph_addChildren(parent, children, sendToApp, handleNonElmChild) {
   }
 }
 
-function _Morph_morphChildren(parent, children, sendToApp, handleNonElmChild) {
+function _Morph_morphChildren(
+  parent,
+  _parentVNode,
+  children,
+  sendToApp,
+  handleNonElmChild
+) {
   var //
     i = 0,
     j = 0,
@@ -352,25 +353,196 @@ function _Morph_morphChildren(parent, children, sendToApp, handleNonElmChild) {
 
 function _Morph_morphChildrenKeyed(
   parent,
+  parentVNode,
   children,
   sendToApp,
   handleNonElmChild
+) {
+  var //
+    i = 0,
+    i2 = parent.childNodes.length - 1,
+    j = 0,
+    j2 = children.length - 1,
+    nonElmChildren = [],
+    domNode,
+    domNode2,
+    newDomNode,
+    nextDomNode,
+    prevNode,
+    prevNode2,
+    stuck,
+    vNode,
+    vNode2;
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    stuck = false;
+
+    while (i <= i2 && j <= j2) {
+      domNode = parent.childNodes[i];
+      vNode = children[j];
+      prevNode = _Morph_weakMap.get(domNode);
+      if (prevNode === undefined) {
+        nonElmChildren.push(domNode);
+        i++;
+      } else if (vNode.key === prevNode.key) {
+        newDomNode = _Morph_morphNode(
+          domNode,
+          vNode,
+          sendToApp,
+          handleNonElmChild
+        );
+        if (domNode !== newDomNode) {
+          parent.replaceChild(newDomNode, domNode);
+        }
+        i++;
+        j++;
+      } else if (!parentVNode.keys.has(prevNode.key)) {
+        parent.removeChild(domNode);
+        i2--;
+      } else {
+        stuck = true;
+        break;
+      }
+    }
+
+    if (!stuck) {
+      break;
+    }
+
+    stuck = false;
+
+    while (i2 > i && j2 > j) {
+      domNode2 = parent.childNodes[i2];
+      vNode2 = children[j2];
+      prevNode2 = _Morph_weakMap.get(domNode2);
+      if (prevNode2 === undefined) {
+        nonElmChildren.push(domNode2);
+        i2--;
+      } else if (vNode2.key === prevNode2.key) {
+        newDomNode = _Morph_morphNode(
+          domNode2,
+          vNode2,
+          sendToApp,
+          handleNonElmChild
+        );
+        if (domNode2 !== newDomNode) {
+          parent.replaceChild(newDomNode, domNode2);
+        }
+        i2--;
+        j2--;
+      } else if (!parentVNode.keys.has(prevNode2.key)) {
+        parent.removeChild(domNode2);
+        i2--;
+      } else {
+        stuck = true;
+        break;
+      }
+    }
+
+    if (!stuck) {
+      break;
+    }
+
+    // It’s a swap.
+    if (vNode.key === prevNode2.key && prevNode.key === vNode2.key) {
+      newDomNode = _Morph_morphNode(
+        domNode2,
+        vNode,
+        sendToApp,
+        handleNonElmChild
+      );
+      if (newDomNode === domNode2) {
+        nextDomNode = domNode2.nextSibling;
+        parent.replaceChild(newDomNode, domNode);
+        newDomNode = _Morph_morphNode(
+          domNode,
+          vNode2,
+          sendToApp,
+          handleNonElmChild
+        );
+        parent.insertBefore(newDomNode, nextDomNode);
+      } else {
+        parent.replaceChild(newDomNode, domNode);
+        newDomNode = _Morph_morphNode(
+          domNode,
+          vNode2,
+          sendToApp,
+          handleNonElmChild
+        );
+        parent.replace(newDomNode, domNode2);
+      }
+      i++;
+      j++;
+      i2--;
+      j2--;
+    } else {
+      _Morph_morphChildrenKeyedMapped(
+        parent,
+        parentVNode,
+        children,
+        sendToApp,
+        handleNonElmChild,
+        i,
+        i2,
+        j,
+        j2
+      );
+      for (i = 0; i < nonElmChildren.length; i++) {
+        handleNonElmChild(nonElmChildren[i]);
+      }
+      return;
+    }
+  }
+
+  for (; i2 >= i; i2--) {
+    domNode = parent.childNodes[i2];
+    prevNode = _Morph_weakMap.get(domNode);
+    if (prevNode === undefined) {
+      nonElmChildren.push(domNode);
+    } else {
+      _Morph_weakMap.delete(domNode);
+      parent.removeChild(domNode);
+    }
+  }
+
+  for (; j2 >= j; j++) {
+    parent.appendChild(
+      _Morph_morphNode(undefined, children[j], sendToApp, handleNonElmChild)
+    );
+  }
+
+  for (i = 0; i < nonElmChildren.length; i++) {
+    handleNonElmChild(nonElmChildren[i]);
+  }
+}
+
+function _Morph_morphChildrenKeyedMapped(
+  parent,
+  parentVNode,
+  children,
+  sendToApp,
+  handleNonElmChild,
+  i,
+  i2,
+  j,
+  j2
 ) {
   var //
     map = new Map(),
     refDomNode = null,
     child,
     domNode,
-    i,
+    k,
     newDomNode,
     prevNode;
 
-  for (i = parent.childNodes.length - 1; i >= 0; i--) {
-    child = parent.childNodes[i];
+  for (k = i2; k >= i; k--) {
+    child = parent.childNodes[k];
     prevNode = _Morph_weakMap.get(child);
     if (prevNode === undefined) {
       handleNonElmChild(child);
-    } else if (map.has(prevNode.key)) {
+    } else if (map.has(prevNode.key) || !parentVNode.keys.has(prevNode.key)) {
       _Morph_weakMap.delete(child);
       parent.removeChild(child);
     } else {
@@ -378,13 +550,10 @@ function _Morph_morphChildrenKeyed(
     }
   }
 
-  refDomNode = parent.firstChild;
-  while (refDomNode !== null && !_Morph_weakMap.has(refDomNode)) {
-    refDomNode = refDomNode.nextSibling;
-  }
+  refDomNode = parent.childNodes[i];
 
-  for (i = 0; i < children.length; i++) {
-    child = children[i];
+  for (; j <= j2; j++) {
+    child = children[j];
     domNode = map.get(child.key);
     if (domNode !== undefined) {
       map.delete(child.key);
@@ -419,11 +588,6 @@ function _Morph_morphChildrenKeyed(
     }
     refDomNode = newDomNode.nextSibling;
   }
-
-  map.forEach(function (child) {
-    _Morph_weakMap.delete(child);
-    parent.removeChild(child);
-  });
 }
 
 function _Morph_morphCustom(domNode, vNode, sendToApp) {
@@ -711,6 +875,35 @@ function _VirtualDom_organizeFacts(factList) {
     }
   }
   return facts;
+}
+
+function _VirtualDom_keyedNodeNS() {
+  return F2(function (namespace, tag) {
+    return F2(function (factList, kidList) {
+      var kid,
+        kids = [],
+        keys = new Set(),
+        descendantsCount = 0;
+      for (; kidList.b; kidList = kidList.b) {
+        kid = kidList.a;
+        descendantsCount += kid.b.b || 0;
+        kid.b.key = kid.a;
+        kids.push(kid.b);
+        keys.add(kid.a);
+      }
+      descendantsCount += kids.length;
+
+      return {
+        $: 2,
+        c: tag,
+        d: _VirtualDom_organizeFacts(factList),
+        e: kids,
+        f: namespace,
+        b: descendantsCount,
+        keys: keys,
+      };
+    });
+  });
 }
 
 // RUN
