@@ -8,6 +8,7 @@
     "sandbox-debug": "elm make src/Sandbox.elm --output elm.js --debug && node mod.js elm.js",
     "sandbox-simple": "elm make src/SandboxSimple.elm --output elm.js && node mod.js elm.js",
     "only-html": "elm make src/OnlyHtml.elm --output elm.js && node mod.js elm.js",
+    "keylist": "elm make src/KeyList.elm --output elm.js && node mod.js elm.js",
     "test": "eslint . --report-unused-disable-directives && prettier --check ."
   },
   "dependencies": {

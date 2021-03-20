@@ -269,7 +269,14 @@ function _Morph_morphElement(
     if (domNode.firstChild === null) {
       _Morph_addChildren(domNode, children, sendToApp, handleNonElmChild);
     } else {
-      morphChildren(domNode, vNode, children, sendToApp, handleNonElmChild);
+      morphChildren(
+        domNode,
+        vNode,
+        prevNode,
+        children,
+        sendToApp,
+        handleNonElmChild
+      );
     }
     _Morph_weakMap.set(domNode, vNode);
     return domNode;
@@ -302,6 +309,7 @@ function _Morph_addChildren(parent, children, sendToApp, handleNonElmChild) {
 function _Morph_morphChildren(
   parent,
   _parentVNode,
+  _parentPrevNode,
   children,
   sendToApp,
   handleNonElmChild
@@ -357,6 +365,7 @@ function _Morph_morphChildren(
 function _Morph_morphChildrenKeyed(
   parent,
   parentVNode,
+  parentPrevNode,
   children,
   sendToApp,
   handleNonElmChild
@@ -403,6 +412,19 @@ function _Morph_morphChildrenKeyed(
       } else if (!parentVNode.keys.has(prevNode.key)) {
         parent.removeChild(domNode);
         i2--;
+      } else if (
+        parentPrevNode.keys !== undefined &&
+        !parentPrevNode.keys.has(vNode.key)
+      ) {
+        newDomNode = _Morph_morphNode(
+          undefined,
+          vNode,
+          sendToApp,
+          handleNonElmChild
+        );
+        parent.insertBefore(newDomNode, domNode);
+        i++;
+        j++;
       } else {
         stuck = true;
         break;
@@ -437,6 +459,19 @@ function _Morph_morphChildrenKeyed(
       } else if (!parentVNode.keys.has(prevNode2.key)) {
         parent.removeChild(domNode2);
         i2--;
+      } else if (
+        parentPrevNode.keys !== undefined &&
+        !parentPrevNode.keys.has(vNode2.key)
+      ) {
+        newDomNode = _Morph_morphNode(
+          undefined,
+          vNode2,
+          sendToApp,
+          handleNonElmChild
+        );
+        parent.insertBefore(newDomNode, domNode2.nextSibling);
+        i2--;
+        j2--;
       } else {
         stuck = true;
         break;
