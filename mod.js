@@ -157,8 +157,15 @@ var replacements = [
     ["currPopout = nextPopout;", ""],
   ];
 
-function _Morph_defaultHandleNonElmChild(child) {
+function _Morph_defaultHandleNonElmChild(child, vNode, prevNode) {
   if (child.nodeName === "FONT") {
+    if (
+      vNode !== undefined &&
+      prevNode !== undefined &&
+      vNode.a === prevNode.a
+    ) {
+      return vNode;
+    }
     child.parentNode.removeChild(child);
   }
 }
@@ -270,14 +277,7 @@ function _Morph_morphElement(
     if (domNode.firstChild === null) {
       _Morph_addChildren(domNode, children, sendToApp, handleNonElmChild);
     } else {
-      morphChildren(
-        domNode,
-        vNode,
-        prevNode,
-        children,
-        sendToApp,
-        handleNonElmChild
-      );
+      morphChildren(domNode, vNode, prevNode, sendToApp, handleNonElmChild);
     }
     _Morph_weakMap.set(domNode, vNode);
     return domNode;
@@ -309,32 +309,43 @@ function _Morph_addChildren(parent, children, sendToApp, handleNonElmChild) {
 
 function _Morph_morphChildren(
   parent,
-  _parentVNode,
-  _parentPrevNode,
-  children,
+  parentVNode,
+  parentPrevNode,
   sendToApp,
   handleNonElmChild
 ) {
   var //
+    children = parentVNode.e,
+    prevChildren = parentPrevNode.e,
     i = 0,
     j = 0,
-    nonElmChildren = [],
     domNode,
     newDomNode,
-    prevNode;
+    prevNode,
+    returned,
+    vNode;
 
   while (i < parent.childNodes.length) {
     domNode = parent.childNodes[i];
+    vNode = j < children.length ? children[j] : undefined;
     prevNode = _Morph_weakMap.get(domNode);
     if (prevNode === undefined) {
-      nonElmChildren.push(domNode);
-      i++;
-      continue;
-    }
-    if (j < children.length) {
+      if (vNode !== undefined) {
+        prevNode = j < prevChildren.length ? prevChildren[j] : undefined;
+        returned = handleNonElmChild(domNode, vNode, prevNode);
+        if (returned === vNode) {
+          j++;
+        }
+      } else {
+        handleNonElmChild(domNode);
+      }
+      if (domNode.parentNode === parent) {
+        i++;
+      }
+    } else if (vNode !== undefined) {
       newDomNode = _Morph_morphNode(
         domNode,
-        children[j],
+        vNode,
         sendToApp,
         handleNonElmChild
       );
@@ -354,10 +365,6 @@ function _Morph_morphChildren(
       _Morph_morphNode(undefined, children[j], sendToApp, handleNonElmChild)
     );
   }
-
-  for (i = 0; i < nonElmChildren.length; i++) {
-    handleNonElmChild(nonElmChildren[i]);
-  }
 }
 
 // This runs from both ends as far as it can: https://neil.fraser.name/writing/diff/
@@ -367,22 +374,23 @@ function _Morph_morphChildrenKeyed(
   parent,
   parentVNode,
   parentPrevNode,
-  children,
   sendToApp,
   handleNonElmChild
 ) {
   var //
+    children = parentVNode.e,
+    prevChildren = parentPrevNode.e,
     i = 0,
     i2 = parent.childNodes.length - 1,
     j = 0,
     j2 = children.length - 1,
-    nonElmChildren = [],
     domNode,
     domNode2,
     newDomNode,
     nextDomNode,
     prevNode,
     prevNode2,
+    returned,
     stuck,
     vNode,
     vNode2;
@@ -396,8 +404,20 @@ function _Morph_morphChildrenKeyed(
       vNode = children[j];
       prevNode = _Morph_weakMap.get(domNode);
       if (prevNode === undefined) {
-        nonElmChildren.push(domNode);
-        i++;
+        if (vNode !== undefined) {
+          prevNode = j < prevChildren.length ? prevChildren[j] : undefined;
+          returned = handleNonElmChild(domNode, vNode, prevNode);
+          if (returned === vNode) {
+            j++;
+          }
+        } else {
+          handleNonElmChild(domNode);
+        }
+        if (domNode.parentNode === parent) {
+          i++;
+        } else {
+          i2--;
+        }
       } else if (vNode.key === prevNode.key) {
         newDomNode = _Morph_morphNode(
           domNode,
@@ -444,8 +464,18 @@ function _Morph_morphChildrenKeyed(
       vNode2 = children[j2];
       prevNode2 = _Morph_weakMap.get(domNode2);
       if (prevNode2 === undefined) {
-        nonElmChildren.push(domNode2);
-        i2--;
+        if (vNode !== undefined) {
+          prevNode = j2 < prevChildren.length ? prevChildren[j2] : undefined;
+          returned = handleNonElmChild(domNode, vNode, prevNode);
+          if (returned === vNode) {
+            j2--;
+          }
+        } else {
+          handleNonElmChild(domNode);
+        }
+        if (domNode.parentNode === parent) {
+          i2--;
+        }
       } else if (vNode2.key === prevNode2.key) {
         newDomNode = _Morph_morphNode(
           domNode2,
@@ -528,9 +558,6 @@ function _Morph_morphChildrenKeyed(
         j,
         j2
       );
-      for (i = 0; i < nonElmChildren.length; i++) {
-        handleNonElmChild(nonElmChildren[i]);
-      }
       return;
     }
   }
@@ -539,7 +566,7 @@ function _Morph_morphChildrenKeyed(
     domNode = parent.childNodes[i2];
     prevNode = _Morph_weakMap.get(domNode);
     if (prevNode === undefined) {
-      nonElmChildren.push(domNode);
+      handleNonElmChild(domNode);
     } else {
       _Morph_weakMap.delete(domNode);
       parent.removeChild(domNode);
@@ -550,10 +577,6 @@ function _Morph_morphChildrenKeyed(
     parent.appendChild(
       _Morph_morphNode(undefined, children[j], sendToApp, handleNonElmChild)
     );
-  }
-
-  for (i = 0; i < nonElmChildren.length; i++) {
-    handleNonElmChild(nonElmChildren[i]);
   }
 }
 
