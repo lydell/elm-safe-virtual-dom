@@ -9,6 +9,7 @@
   $elm$virtual_dom$VirtualDom$toHandlerInt,
   F2,
   Map,
+  exports,
   Set,
 */
 
@@ -16,146 +17,144 @@
 // https://github.com/elm/browser/blob/1d28cd625b3ce07be6dfad51660bea6de2c905f2/src/Elm/Kernel/Browser.js
 // https://github.com/elm/browser/blob/1d28cd625b3ce07be6dfad51660bea6de2c905f2/src/Elm/Kernel/Debugger.js
 // https://github.com/elm/virtual-dom/blob/5a5bcf48720bc7d53461b3cd42a9f19f119c5503/src/Elm/Kernel/VirtualDom.js
-var replacements = [
-    // ### _Browser_element / _Browser_document
-    [
-      /var currNode = _VirtualDom_virtualize\((dom|body)Node\);/g,
-      "var handleNonElmChild = args && args.handleNonElmChild || _Morph_defaultHandleNonElmChild;",
-    ],
-    ["var patches = _VirtualDom_diff(currNode, nextNode);", ""],
-    [
-      "domNode = _VirtualDom_applyPatches(domNode, currNode, patches, sendToApp);",
-      "domNode = _Morph_morphRootNode(domNode, nextNode, sendToApp, handleNonElmChild);",
-    ],
-    [
-      "bodyNode = _VirtualDom_applyPatches(bodyNode, currNode, patches, sendToApp);",
-      "bodyNode = _Morph_morphRootNode(bodyNode, nextNode, sendToApp, handleNonElmChild);",
-    ],
-    ["currNode = nextNode;", ""],
+exports.replacements = [
+  // ### _Browser_element / _Browser_document
+  [
+    /var currNode = _VirtualDom_virtualize\((dom|body)Node\);/g,
+    "var handleNonElmChild = args && args.handleNonElmChild || _Morph_defaultHandleNonElmChild;",
+  ],
+  ["var patches = _VirtualDom_diff(currNode, nextNode);", ""],
+  [
+    "domNode = _VirtualDom_applyPatches(domNode, currNode, patches, sendToApp);",
+    "domNode = _Morph_morphRootNode(domNode, nextNode, sendToApp, handleNonElmChild);",
+  ],
+  [
+    "bodyNode = _VirtualDom_applyPatches(bodyNode, currNode, patches, sendToApp);",
+    "bodyNode = _Morph_morphRootNode(bodyNode, nextNode, sendToApp, handleNonElmChild);",
+  ],
+  ["currNode = nextNode;", ""],
 
-    // ### _VirtualDom_organizeFacts
-    [
-      /function _VirtualDom_organizeFacts\(factList\)\r?\n\{(\r?\n([\t ][^\n]+)?)+\r?\n\}/,
-      _VirtualDom_organizeFacts.toString(),
-    ],
+  // ### _VirtualDom_organizeFacts
+  [
+    /function _VirtualDom_organizeFacts\(factList\)\r?\n\{(\r?\n([\t ][^\n]+)?)+\r?\n\}/,
+    _VirtualDom_organizeFacts.toString(),
+  ],
 
-    // ### _VirtualDom_makeCallback
-    [
-      "function _VirtualDom_makeCallback(eventNode, initialHandler)",
-      "function _VirtualDom_makeCallback(initialEventNode, initialHandler)",
-    ],
-    [
-      "var handler = callback.q;",
-      "var handler = callback.q; var eventNode = callback.r;",
-    ],
-    [
-      "callback.q = initialHandler;",
-      "callback.q = initialHandler; callback.r = initialEventNode;",
-    ],
-    [
-      /var tagger;\s+var i;\s+while \(tagger = currentEventNode.j\)(\s+)\{(\r?\n|\1[\t ][^\n]+)+\1\}/,
-      "",
-    ],
+  // ### _VirtualDom_makeCallback
+  [
+    "function _VirtualDom_makeCallback(eventNode, initialHandler)",
+    "function _VirtualDom_makeCallback(initialEventNode, initialHandler)",
+  ],
+  [
+    "var handler = callback.q;",
+    "var handler = callback.q; var eventNode = callback.r;",
+  ],
+  [
+    "callback.q = initialHandler;",
+    "callback.q = initialHandler; callback.r = initialEventNode;",
+  ],
+  [
+    /var tagger;\s+var i;\s+while \(tagger = currentEventNode.j\)(\s+)\{(\r?\n|\1[\t ][^\n]+)+\1\}/,
+    "",
+  ],
 
-    // ### _VirtualDom_keyedNodeNS
-    [
-      /var _VirtualDom_keyedNodeNS = F2\(function\(namespace, tag\)\r?\n\{(\r?\n([\t ][^\n]+)?)+\r?\n\}\);/,
-      "var _VirtualDom_keyedNodeNS = " +
-        _VirtualDom_keyedNodeNS.toString() +
-        "();",
-    ],
+  // ### _VirtualDom_keyedNodeNS
+  [
+    /var _VirtualDom_keyedNodeNS = F2\(function\(namespace, tag\)\r?\n\{(\r?\n([\t ][^\n]+)?)+\r?\n\}\);/,
+    "var _VirtualDom_keyedNodeNS = " +
+      _VirtualDom_keyedNodeNS.toString() +
+      "();",
+  ],
 
-    // ### Insert functions
+  // ### Insert functions
+  [
+    "var _VirtualDom_divertHrefToApp;",
     [
       "var _VirtualDom_divertHrefToApp;",
-      [
-        "var _VirtualDom_divertHrefToApp;",
-        "var _Morph_weakMap = new WeakMap();",
-        _Morph_defaultHandleNonElmChild,
-        _Morph_morphRootNode,
-        _Morph_morphNode,
-        _Morph_morphText,
-        _Morph_morphElement,
-        _Morph_addChildren,
-        _Morph_morphChildren,
-        _Morph_morphChildrenKeyed,
-        _Morph_morphChildrenKeyedMapped,
-        _Morph_morphCustom,
-        _Morph_morphMap,
-        _Morph_morphLazy,
-        _Morph_morphFacts,
-        _Morph_morphEvents,
-        _Morph_morphStyles,
-        _Morph_morphProperties,
-        _Morph_morphAttributes,
-        _Morph_morphNamespacedAttributes,
-      ]
-        .map(function (i) {
-          return i.toString();
-        })
-        .join("\n\n"),
-    ],
-
-    // ### https://github.com/elm/virtual-dom/issues/168
-    [
-      /var _VirtualDom_nodeNS = F2\(function\(namespace, tag\)\r?\n\{/,
-      "$& tag = _VirtualDom_noScript(tag);",
-    ],
-
-    // ### https://github.com/elm/html/issues/228
-    // Judging by how React does things, everything using `stringProperty` should use `attribute` instead.
-    // https://github.com/facebook/react/blob/9198a5cec0936a21a5ba194a22fcbac03eba5d1d/packages/react-dom/src/shared/DOMProperty.js#L360-L383
-    // Some property names and attribute names differ.
-    // https://github.com/facebook/react/blob/9198a5cec0936a21a5ba194a22fcbac03eba5d1d/packages/react-dom/src/shared/DOMProperty.js#L265-L272
-    [
-      "$elm$html$Html$Attributes$stringProperty('acceptCharset')",
-      "_VirtualDom_attribute('accept-charset')",
-      true,
-    ],
-    [
-      "$elm$html$Html$Attributes$stringProperty('className')",
-      "_VirtualDom_attribute('class')",
-      true,
-    ],
-    [
-      "$elm$html$Html$Attributes$stringProperty('htmlFor')",
-      "_VirtualDom_attribute('for')",
-      true,
-    ],
-    // The rest should work fine as-is.
-    // Except `value`. Typing into an input updates `.value`, but not the
-    // attribute. Same thing if you alter `.value` with code.
-    // (`.setAttribute("value", "x")` _only_ sets the attribute, not `.value`.)
-    // See also:
-    // https://github.com/facebook/react/issues/13525
-    // https://github.com/facebook/react/issues/11896
-    [
-      /\$elm\$html\$Html\$Attributes\$stringProperty(\('(?!value)\w+'\))/g,
-      "_VirtualDom_attribute$1",
-      true,
-    ],
+      "var _Morph_weakMap = new WeakMap();",
+      _Morph_defaultHandleNonElmChild,
+      _Morph_morphRootNode,
+      _Morph_morphNode,
+      _Morph_morphText,
+      _Morph_morphElement,
+      _Morph_addChildren,
+      _Morph_morphChildren,
+      _Morph_morphChildrenKeyed,
+      _Morph_morphChildrenKeyedMapped,
+      _Morph_morphCustom,
+      _Morph_morphMap,
+      _Morph_morphLazy,
+      _Morph_morphFacts,
+      _Morph_morphEvents,
+      _Morph_morphStyles,
+      _Morph_morphProperties,
+      _Morph_morphAttributes,
+      _Morph_morphNamespacedAttributes,
+    ]
+      .map(function (i) {
+        return i.toString();
+      })
+      .join("\n\n"),
   ],
-  debuggerReplacements = [
-    ["var currPopout;", ""],
-    ["var cornerCurr = _VirtualDom_virtualize(cornerNode);", ""],
-    ["var cornerPatches = _VirtualDom_diff(cornerCurr, cornerNext);", ""],
-    [
-      "cornerNode = _VirtualDom_applyPatches(cornerNode, cornerCurr, cornerPatches, sendToApp);",
-      "cornerNode = _Morph_morphRootNode(cornerNode, cornerNext, sendToApp, handleNonElmChild);",
-    ],
-    ["cornerCurr = cornerNext;", ""],
-    ["currPopout = undefined;", ""],
-    [
-      "currPopout || (currPopout = _VirtualDom_virtualize(model.popout.b));",
-      "",
-    ],
-    ["var popoutPatches = _VirtualDom_diff(currPopout, nextPopout);", ""],
-    [
-      "_VirtualDom_applyPatches(model.popout.b.body, currPopout, popoutPatches, sendToApp);",
-      "_Morph_morphRootNode(model.popout.b.body, nextPopout, sendToApp, handleNonElmChild);",
-    ],
-    ["currPopout = nextPopout;", ""],
-  ];
+
+  // ### https://github.com/elm/virtual-dom/issues/168
+  [
+    /var _VirtualDom_nodeNS = F2\(function\(namespace, tag\)\r?\n\{/,
+    "$& tag = _VirtualDom_noScript(tag);",
+  ],
+
+  // ### https://github.com/elm/html/issues/228
+  // Judging by how React does things, everything using `stringProperty` should use `attribute` instead.
+  // https://github.com/facebook/react/blob/9198a5cec0936a21a5ba194a22fcbac03eba5d1d/packages/react-dom/src/shared/DOMProperty.js#L360-L383
+  // Some property names and attribute names differ.
+  // https://github.com/facebook/react/blob/9198a5cec0936a21a5ba194a22fcbac03eba5d1d/packages/react-dom/src/shared/DOMProperty.js#L265-L272
+  [
+    "$elm$html$Html$Attributes$stringProperty('acceptCharset')",
+    "_VirtualDom_attribute('accept-charset')",
+    true,
+  ],
+  [
+    "$elm$html$Html$Attributes$stringProperty('className')",
+    "_VirtualDom_attribute('class')",
+    true,
+  ],
+  [
+    "$elm$html$Html$Attributes$stringProperty('htmlFor')",
+    "_VirtualDom_attribute('for')",
+    true,
+  ],
+  // The rest should work fine as-is.
+  // Except `value`. Typing into an input updates `.value`, but not the
+  // attribute. Same thing if you alter `.value` with code.
+  // (`.setAttribute("value", "x")` _only_ sets the attribute, not `.value`.)
+  // See also:
+  // https://github.com/facebook/react/issues/13525
+  // https://github.com/facebook/react/issues/11896
+  [
+    /\$elm\$html\$Html\$Attributes\$stringProperty(\('(?!value)\w+'\))/g,
+    "_VirtualDom_attribute$1",
+    true,
+  ],
+];
+
+exports.debuggerReplacements = [
+  ["var currPopout;", ""],
+  ["var cornerCurr = _VirtualDom_virtualize(cornerNode);", ""],
+  ["var cornerPatches = _VirtualDom_diff(cornerCurr, cornerNext);", ""],
+  [
+    "cornerNode = _VirtualDom_applyPatches(cornerNode, cornerCurr, cornerPatches, sendToApp);",
+    "cornerNode = _Morph_morphRootNode(cornerNode, cornerNext, sendToApp, handleNonElmChild);",
+  ],
+  ["cornerCurr = cornerNext;", ""],
+  ["currPopout = undefined;", ""],
+  ["currPopout || (currPopout = _VirtualDom_virtualize(model.popout.b));", ""],
+  ["var popoutPatches = _VirtualDom_diff(currPopout, nextPopout);", ""],
+  [
+    "_VirtualDom_applyPatches(model.popout.b.body, currPopout, popoutPatches, sendToApp);",
+    "_Morph_morphRootNode(model.popout.b.body, nextPopout, sendToApp, handleNonElmChild);",
+  ],
+  ["currPopout = nextPopout;", ""],
+];
 
 function _Morph_defaultHandleNonElmChild(child, vNode, prevNode) {
   if (child.nodeName === "FONT") {
@@ -978,82 +977,4 @@ function _VirtualDom_keyedNodeNS() {
       };
     });
   });
-}
-
-// RUN
-
-var fs = require("fs"),
-  path = require("path");
-
-function runReplacements(code) {
-  if (!/^function _Browser_/m.test(code)) {
-    throw new Error(
-      [
-        "Could not find `function _Browser_`.",
-        "",
-        "Make sure that:",
-        "",
-        "- The Elm code has `import Browser`.",
-        "- The JavaScript code is NOT minified.",
-      ].join("\n")
-    );
-  }
-  var newCode = replacements.reduce(strictReplace, code);
-  return code.includes("Compiled in DEBUG mode")
-    ? debuggerReplacements.reduce(strictReplace, newCode)
-    : newCode;
-}
-
-function strictReplace(code, tuple) {
-  var //
-    search = tuple[0],
-    replacement = tuple[1],
-    allow0matches = tuple[2] === true,
-    parts = code.split(search),
-    content,
-    filePath;
-
-  if (!allow0matches && parts.length <= 1) {
-    filePath = path.resolve("elm-virtual-dom-patch-error.txt");
-    content = [
-      "Patching Elm’s JS output to avoid virtual DOM errors caused by browser extensions failed!",
-      "This message is defined in the app/patches/ folder.",
-      "",
-      "### Code to replace (not found!):",
-      search,
-      "",
-      "### Replacement:",
-      replacement,
-      "",
-      "### Input code:",
-      code,
-    ].join("\n");
-    try {
-      fs.writeFileSync(filePath, content);
-    } catch (error) {
-      throw new Error(
-        "Elm Virtual DOM patch: Code to replace was not found! Tried to write more info to " +
-          filePath +
-          ", but got this error: " +
-          error.message
-      );
-    }
-    throw new Error(
-      "Elm Virtual DOM patch: Code to replace was not found! More info written to " +
-        filePath
-    );
-  }
-  return typeof search === "string"
-    ? parts.join(replacement)
-    : code.replace(search, replacement);
-}
-
-function overwrite(file, transform) {
-  fs.writeFileSync(file, transform(fs.readFileSync(file, "utf8")));
-}
-
-if (require.main === module) {
-  overwrite(process.argv[2], runReplacements);
-} else {
-  module.exports = runReplacements;
 }
