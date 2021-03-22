@@ -162,6 +162,8 @@ function _Morph_defaultHandleNonElmChild(child, vNode, prevNode) {
     if (
       vNode !== undefined &&
       prevNode !== undefined &&
+      vNode.$ === 0 &&
+      prevNode.$ === 0 &&
       vNode.a === prevNode.a
     ) {
       return vNode;
