@@ -985,7 +985,16 @@ var fs = require("fs"),
 
 function runReplacements(code) {
   if (!/^function _Browser_/m.test(code)) {
-    throw new Error("The Elm code needs `import Browser`.");
+    throw new Error(
+      [
+        "Could not find `function _Browser_`.",
+        "",
+        "Make sure that:",
+        "",
+        "- The Elm code has `import Browser`.",
+        "- The JavaScript code is NOT minified.",
+      ].join("\n")
+    );
   }
   var newCode = replacements.reduce(strictReplace, code);
   return code.includes("Compiled in DEBUG mode")
