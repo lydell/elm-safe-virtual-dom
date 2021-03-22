@@ -21,16 +21,16 @@ exports.replacements = [
   // ### _Browser_element / _Browser_document
   [
     /var currNode = _VirtualDom_virtualize\((dom|body)Node\);/g,
-    "var handleNonElmChild = args && args.handleNonElmChild || _Morph_defaultHandleNonElmChild;",
+    "var handleNonElmChild = args && args.handleNonElmChild || _Morph_defaultHandleNonElmChild, timeLabel = args && args.time;",
   ],
   ["var patches = _VirtualDom_diff(currNode, nextNode);", ""],
   [
     "domNode = _VirtualDom_applyPatches(domNode, currNode, patches, sendToApp);",
-    "domNode = _Morph_morphRootNode(domNode, nextNode, sendToApp, handleNonElmChild);",
+    "domNode = _Morph_morphRootNode(domNode, nextNode, sendToApp, handleNonElmChild, timeLabel);",
   ],
   [
     "bodyNode = _VirtualDom_applyPatches(bodyNode, currNode, patches, sendToApp);",
-    "bodyNode = _Morph_morphRootNode(bodyNode, nextNode, sendToApp, handleNonElmChild);",
+    "bodyNode = _Morph_morphRootNode(bodyNode, nextNode, sendToApp, handleNonElmChild, timeLabel);",
   ],
   ["currNode = nextNode;", ""],
 
@@ -171,20 +171,35 @@ function _Morph_defaultHandleNonElmChild(child, vNode, prevNode) {
   }
 }
 
-function _Morph_morphRootNode(domNode, nextNode, sendToApp, handleNonElmChild) {
-  console.time("_Morph_morphRootNode");
+function _Morph_morphRootNode(
+  domNode,
+  nextNode,
+  sendToApp,
+  handleNonElmChild,
+  timeLabel
+) {
+  if (timeLabel !== undefined) {
+    console.time(timeLabel);
+  }
+
   _Morph_weakMap.set(domNode, nextNode);
+
   var newDomNode = _Morph_morphNode(
     domNode,
     nextNode,
     sendToApp,
     handleNonElmChild
   );
+
   if (newDomNode !== domNode && domNode.parentNode !== null) {
     _Morph_weakMap.delete(domNode);
     domNode.parentNode.replaceChild(newDomNode, domNode);
   }
-  console.timeEnd("_Morph_morphRootNode");
+
+  if (timeLabel !== undefined) {
+    console.timeEnd(timeLabel);
+  }
+
   return newDomNode;
 }
 
