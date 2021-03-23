@@ -1,3 +1,4 @@
+/* global Elm */
 require("./compiled/KitchenSink.js");
 
 function nextFrame() {
@@ -6,8 +7,14 @@ function nextFrame() {
   });
 }
 
-function transformRecord(record) {
-  const id = record.target.localName;
+function nodeId(node) {
+  return node.localName !== undefined
+    ? `<${node.localName}>`
+    : `${node.nodeName} ${JSON.stringify(node.data)}`;
+}
+
+function recordToString(record) {
+  const id = nodeId(record.target);
 
   switch (record.type) {
     case "attributes": {
@@ -21,80 +28,104 @@ function transformRecord(record) {
       );
       return [
         record.oldValue === null
-          ? ["AttrAdded", id, name, value]
+          ? `AttrAdded ${id} ${name} ${JSON.stringify(value)}`
           : value === null
-          ? ["AttrRemoved", id, name, record.oldValue]
-          : ["AttrChanged", id, name, record.oldValue, value],
+          ? `AttrRemoved ${id} ${name} ${JSON.stringify(record.oldValue)}`
+          : `AttrChanged ${id} ${name} ${JSON.stringify(
+              record.oldValue
+            )} 🔀 ${JSON.stringify(value)}`,
       ];
     }
 
     case "characterData":
-      return [["TextUpdated", record.oldValue, record.target.data]];
+      return [
+        `TextUpdated ${JSON.stringify(record.oldValue)} 🔀️ ${JSON.stringify(
+          record.target.data
+        )}`,
+      ];
 
     case "childList":
       return [
-        ...Array.from(record.addedNodes, (node) => [
-          "NodeAdded",
-          id,
-          node.localName,
-        ]),
-        ...Array.from(record.removedNodes, (node) => [
-          "NodeRemoved",
-          id,
-          node.localName,
-        ]),
+        ...Array.from(
+          record.addedNodes,
+          (node) => `NodeAdded ${id} ⤵️ ${nodeId(node)}`
+        ),
+        ...Array.from(
+          record.removedNodes,
+          (node) => `NodeRemoved ${id} ⤵️ ${nodeId(node)}`
+        ),
       ];
   }
 }
 
-class AllRecords {
-  constructor() {
-    this.records = [];
+class BrowserElement {
+  constructor(elmModule, options) {
+    this._records = [];
+
+    this._wrapper = document.createElement("div");
+    this._wrapper.append(options.node);
+
+    this._mutationObserver = new MutationObserver((records) => {
+      this._records.push(...records.flatMap(recordToString));
+    });
+    this._mutationObserver.observe(this._wrapper, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeOldValue: true,
+      characterData: true,
+      characterDataOldValue: true,
+    });
+
+    elmModule.init(options);
+  }
+
+  querySelector(selector) {
+    return this._wrapper.firstChild.querySelector(selector);
+  }
+
+  querySelectorAll(selector) {
+    return this._wrapper.firstChild.querySelectorAll(selector);
   }
 
   serialize() {
-    return this.records
-      .map(([first, ...rest]) =>
-        [first, ...rest.map((item) => JSON.stringify(item))].join(" ")
-      )
-      .join("\n");
+    const string =
+      this._records.length === 0
+        ? this._wrapper.innerHTML
+        : this._records.concat("", this._wrapper.innerHTML).join("\n");
+
+    this._records.length = 0;
+
+    return string;
   }
 }
 
 expect.addSnapshotSerializer({
-  test: (value) => value instanceof AllRecords,
+  test: (value) => value instanceof BrowserElement,
   print: (value) => value.serialize(),
 });
 
 test("first", async () => {
-  const node = document.createElement("div");
-  document.body.appendChild(node);
-  window.Elm.KitchenSink.init({ node });
-  const allRecords = new AllRecords();
-  const mutationObserver = new MutationObserver((records) => {
-    allRecords.records.push(...records.flatMap(transformRecord));
-  });
-  mutationObserver.observe(node, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    attributeOldValue: true,
-    characterData: true,
-    characterDataOldValue: true,
+  const b = new BrowserElement(Elm.KitchenSink, {
+    node: document.createElement("div"),
   });
 
-  expect(node.outerHTML).toMatchInlineSnapshot(
-    `"<div>modelInitialValue2<button>Next</button></div>"`
-  );
-
-  document.querySelector("button").click();
   await nextFrame();
 
-  expect(node.outerHTML).toMatchInlineSnapshot(
-    `"<div>Updated<button>Next</button></div>"`
-  );
+  expect(b).toMatchInlineSnapshot(`
+    NodeAdded <div> ⤵️ #text "modelInitialValue2"
+    NodeAdded <div> ⤵️ <button>
 
-  expect(allRecords).toMatchInlineSnapshot(
-    `TextUpdated "modelInitialValue2" "Updated"`
-  );
+    <div>modelInitialValue2<button>Next</button></div>
+  `);
+
+  b.querySelector("button").click();
+
+  await nextFrame();
+
+  expect(b).toMatchInlineSnapshot(`
+    TextUpdated "modelInitialValue2" 🔀️ "Updated"
+
+    <div>Updated<button>Next</button></div>
+  `);
 });
