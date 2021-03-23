@@ -1,5 +1,9 @@
 /* global Elm */
-require("./elm");
+
+const childProcess = require("child_process");
+const fs = require("fs");
+const path = require("path");
+const runReplacements = require("..");
 
 function nextFrame() {
   return new Promise((resolve) => {
@@ -141,6 +145,31 @@ expect.addSnapshotSerializer({
   test: (value) => value instanceof BrowserBase,
   print: (value) => value.serialize(),
 });
+
+beforeAll(() => {
+  const baseDir = path.dirname(__dirname);
+  const elmDir = path.join(baseDir, "tests", "elm");
+  const files = fs.readdirSync(elmDir).map((file) => path.join(elmDir, file));
+  const output = path.join(baseDir, "tests", "elm.js");
+  const result = childProcess.spawnSync(
+    "npx",
+    ["elm", "make", ...files, "--output", output],
+    {
+      shell: true,
+      cwd: baseDir,
+      stdio: ["ignore", "ignore", "inherit"],
+    }
+  );
+  if (result.status !== 0) {
+    process.exit(result.status);
+  }
+  const code = fs.readFileSync(output, "utf8");
+  const newCode = code
+    .replace(/\(this\)\);\s*$/, "(window));")
+    .replace(/console.warn\('[^']+'\);/, "");
+  fs.writeFileSync(output, runReplacements(newCode));
+  require(output);
+}, 60 * 1000);
 
 test("Browser.sandbox", async () => {
   const b = new BrowserElement(Elm.KitchenSink, {
