@@ -171,6 +171,14 @@ beforeAll(() => {
   require(output);
 }, 60 * 1000);
 
+beforeEach(() => {
+  while (document.body.firstChild) {
+    document.body.firstChild.remove();
+  }
+  document.title = "";
+  window.location.pathname = "/";
+});
+
 test("Browser.sandbox", async () => {
   const b = new BrowserElement(Elm.KitchenSink, {
     node: document.createElement("div"),
