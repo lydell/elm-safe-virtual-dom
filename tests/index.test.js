@@ -1,5 +1,5 @@
 /* global Elm */
-require("./compiled/KitchenSink.js");
+require("./elm");
 
 function nextFrame() {
   return new Promise((resolve) => {
@@ -58,17 +58,16 @@ function recordToString(record) {
   }
 }
 
-class BrowserElement {
-  constructor(elmModule, options) {
+class BrowserBase {
+  constructor() {
     this._records = [];
+  }
 
-    this._wrapper = document.createElement("div");
-    this._wrapper.append(options.node);
-
+  _setupMutationObserver(node) {
     this._mutationObserver = new MutationObserver((records) => {
       this._records.push(...records.flatMap(recordToString));
     });
-    this._mutationObserver.observe(this._wrapper, {
+    this._mutationObserver.observe(node, {
       childList: true,
       subtree: true,
       attributes: true,
@@ -76,8 +75,31 @@ class BrowserElement {
       characterData: true,
       characterDataOldValue: true,
     });
+  }
 
+  serialize() {
+    const string =
+      this._records.length === 0
+        ? this.html()
+        : this._records.concat("", this.html()).join("\n");
+
+    this._records.length = 0;
+
+    return string;
+  }
+}
+
+class BrowserElement extends BrowserBase {
+  constructor(elmModule, options) {
+    super();
+    this._wrapper = document.createElement("div");
+    this._wrapper.append(options.node);
+    this._setupMutationObserver(this._wrapper);
     elmModule.init(options);
+  }
+
+  html() {
+    return this._wrapper.innerHTML;
   }
 
   querySelector(selector) {
@@ -87,25 +109,40 @@ class BrowserElement {
   querySelectorAll(selector) {
     return this._wrapper.firstChild.querySelectorAll(selector);
   }
+}
+
+class BrowserDocument extends BrowserBase {
+  constructor(elmModule, options = undefined) {
+    super();
+    this._setupMutationObserver(document.body);
+    elmModule.init(options);
+  }
+
+  html() {
+    return document.body.outerHTML;
+  }
+
+  querySelector(selector) {
+    return document.body.querySelector(selector);
+  }
+
+  querySelectorAll(selector) {
+    return document.body.querySelectorAll(selector);
+  }
 
   serialize() {
-    const string =
-      this._records.length === 0
-        ? this._wrapper.innerHTML
-        : this._records.concat("", this._wrapper.innerHTML).join("\n");
-
-    this._records.length = 0;
-
-    return string;
+    return [window.location.href, document.title, "", super.serialize()].join(
+      "\n"
+    );
   }
 }
 
 expect.addSnapshotSerializer({
-  test: (value) => value instanceof BrowserElement,
+  test: (value) => value instanceof BrowserBase,
   print: (value) => value.serialize(),
 });
 
-test("first", async () => {
+test("Browser.sandbox", async () => {
   const b = new BrowserElement(Elm.KitchenSink, {
     node: document.createElement("div"),
   });
@@ -127,5 +164,33 @@ test("first", async () => {
     TextUpdated "modelInitialValue2" 🔀️ "Updated"
 
     <div>Updated<button>Next</button></div>
+  `);
+});
+
+test("Browser.document", async () => {
+  const b = new BrowserDocument(Elm.App);
+
+  await nextFrame();
+
+  expect(b).toMatchInlineSnapshot(`
+    http://localhost/
+    Application Title
+
+    NodeAdded <body> ⤵️ <div>
+
+    <body><div>http://localhost/<a href="/test">link</a></div></body>
+  `);
+
+  b.querySelector("a").click();
+
+  await nextFrame();
+
+  expect(b).toMatchInlineSnapshot(`
+    http://localhost/test
+    Application Title
+
+    TextUpdated "http://localhost/" 🔀️ "http://localhost/test"
+
+    <body><div>http://localhost/test<a href="/test">link</a></div></body>
   `);
 });
