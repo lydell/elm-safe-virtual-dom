@@ -5,6 +5,68 @@ const fs = require("fs");
 const path = require("path");
 const runReplacements = require("..");
 
+const EVENTS = new Map();
+const originalAddEventListener = EventTarget.prototype.addEventListener;
+const originalRemoveEventListener = EventTarget.prototype.removeEventListener;
+
+EventTarget.prototype.addEventListener = function addEventListener(
+  eventName,
+  f,
+  options
+) {
+  const normalized = normalizeEventListenerOptions(options);
+  normalized.status = "added";
+  const elementListeners = EVENTS.get(this) || new Map();
+  EVENTS.set(this, elementListeners);
+  const eventListeners = elementListeners.get(eventName) || {
+    capture: new Map(),
+    bubble: new Map(),
+  };
+  elementListeners.set(eventName, eventListeners);
+  if (normalized.capture) {
+    eventListeners.capture.set(f, normalized);
+  } else {
+    eventListeners.bubble.set(f, normalized);
+  }
+  return originalAddEventListener.call(this, eventName, f, options);
+};
+
+EventTarget.prototype.removeEventListener = function addEventListener(
+  eventName,
+  f,
+  options
+) {
+  const normalized = normalizeEventListenerOptions(options);
+  const elementListeners = EVENTS.get(this);
+  if (elementListeners !== undefined) {
+    const eventListeners = elementListeners.get(eventName);
+    if (eventListeners !== undefined) {
+      const map = normalized.capture
+        ? eventListeners.capture
+        : eventListeners.bubble;
+      const saved = map.get(f);
+      if (saved !== undefined) {
+        saved.status = "removed";
+      }
+    }
+  }
+  return originalRemoveEventListener.call(this, eventName, f, options);
+};
+
+function normalizeEventListenerOptions(options) {
+  return !options || options === true
+    ? {
+        capture: Boolean(options),
+        once: false,
+        passive: false,
+      }
+    : {
+        capture: Boolean(options.capture),
+        once: Boolean(options.once),
+        passive: Boolean(options.passive),
+      };
+}
+
 function nextFrame() {
   return new Promise((resolve) => {
     requestAnimationFrame(resolve);
@@ -75,9 +137,45 @@ function stringifyAttributes(element, change) {
     ...change.removedAttributes.map((attr) =>
       removed(`${attrName(attr)}=${JSON.stringify(attr.oldValue)}`)
     ),
+    ...eventListenersForElement(element),
   ].map(indent);
 
   return items.length === 0 ? "" : `\n${items.join("\n")}\n`;
+}
+
+function eventListenersForElement(element) {
+  const elementListeners = EVENTS.get(element);
+  return elementListeners === undefined
+    ? []
+    : Array.from(
+        elementListeners.entries()
+      ).flatMap(([eventName, eventListeners]) => [
+        ...eventListenersForElementHelper(eventName, eventListeners.capture),
+        ...eventListenersForElementHelper(eventName, eventListeners.bubble),
+      ]);
+}
+
+function eventListenersForElementHelper(eventName, map) {
+  return Array.from(map.entries(), ([f, options]) => {
+    const name = [
+      "on",
+      eventName,
+      ...Object.entries(options)
+        .filter(([, value]) => value === true)
+        .map(([key]) => key),
+    ].join(":");
+
+    switch (options.status) {
+      case "added":
+        options.status = "existing";
+        return added(name);
+      case "removed":
+        map.delete(f);
+        return removed(name);
+      default:
+        return name;
+    }
+  });
 }
 
 function attrName(attr) {
@@ -265,7 +363,9 @@ test("Browser.sandbox", async () => {
     <div>
       <div>
         ➕"modelInitialValue2"
-        ➕<button>
+        ➕<button
+        ➕  ➕on:click:passive
+        ➕>
         ➕  "Next"
         ➕</button>
       </div>
@@ -280,7 +380,9 @@ test("Browser.sandbox", async () => {
     <div>
       <div>
         "modelInitialValue2"🔀"Updated"
-        <button>
+        <button
+          on:click:passive
+        >
           "Next"
         </button>
       </div>
@@ -302,6 +404,7 @@ test("Browser.document", async () => {
       ➕  "http://localhost/"
       ➕  <a
       ➕    href="/test"
+      ➕    ➕on:click
       ➕  >
       ➕    "link"
       ➕  </a>
@@ -322,6 +425,7 @@ test("Browser.document", async () => {
         "http://localhost/"🔀"http://localhost/test"
         <a
           href="/test"🔀"/test"
+          on:click
         >
           "link"
         </a>
