@@ -15,7 +15,6 @@ EventTarget.prototype.addEventListener = function addEventListener(
   options
 ) {
   const normalized = normalizeEventListenerOptions(options);
-  normalized.status = "added";
   const elementListeners = EVENTS.get(this) || new Map();
   EVENTS.set(this, elementListeners);
   const eventListeners = elementListeners.get(eventName) || {
@@ -23,11 +22,24 @@ EventTarget.prototype.addEventListener = function addEventListener(
     bubble: new Map(),
   };
   elementListeners.set(eventName, eventListeners);
-  if (normalized.capture) {
-    eventListeners.capture.set(f, normalized);
+  const map = normalized.capture
+    ? eventListeners.capture
+    : eventListeners.bubble;
+  const saved = map.get(f);
+  if (saved !== undefined) {
+    const same = Object.entries(normalized).every(
+      ([key, value]) => saved[key] === value
+    );
+    if (same) {
+      normalized.status = "unnecessary";
+    } else {
+      normalized.status = "changed";
+      normalized.previous = saved;
+    }
   } else {
-    eventListeners.bubble.set(f, normalized);
+    normalized.status = "added";
   }
+  map.set(f, normalized);
   return originalAddEventListener.call(this, eventName, f, options);
 };
 
@@ -88,9 +100,15 @@ function stringify(node, records) {
     // Text.
     case 3: {
       const change = records.get(node);
-      return change === undefined
-        ? JSON.stringify(node.data)
-        : `${JSON.stringify(change.oldValue)}🔀${JSON.stringify(node.data)}`;
+      if (change === undefined) {
+        return JSON.stringify(node.data);
+      }
+
+      const string = `${JSON.stringify(change.oldValue)}🔀${JSON.stringify(
+        node.data
+      )}`;
+
+      return change.oldValue === node.data ? unnecessary(string) : string;
     }
 
     // Element.
@@ -121,9 +139,10 @@ function stringifyAttributes(element, change) {
       );
 
       if (changed !== undefined) {
-        return `${attrName(attr)}=${JSON.stringify(
+        const string = `${attrName(attr)}=${JSON.stringify(
           changed.oldValue
         )}🔀${JSON.stringify(attr.value)}`;
+        return changed.oldValue === attr.value ? unnecessary(string) : string;
       }
 
       const string = `${attrName(attr)}=${JSON.stringify(attr.value)}`;
@@ -157,25 +176,37 @@ function eventListenersForElement(element) {
 
 function eventListenersForElementHelper(eventName, map) {
   return Array.from(map.entries(), ([f, options]) => {
-    const name = [
-      "on",
-      eventName,
-      ...Object.entries(options)
-        .filter(([, value]) => value === true)
-        .map(([key]) => key),
-    ].join(":");
+    const name = eventListenerName(eventName, options);
 
     switch (options.status) {
       case "added":
         options.status = "existing";
         return added(name);
+      case "changed":
+        options.status = "existing";
+        return `${eventListenerName(options.previous)}🔀${name}`;
+      case "unnecessary":
+        options.status = "existing";
+        return unnecessary(name);
       case "removed":
         map.delete(f);
         return removed(name);
-      default:
+      case "existing":
         return name;
+      default:
+        throw new Error(`Unknown event listener status: ${options.status}`);
     }
   });
+}
+
+function eventListenerName(eventName, options) {
+  return [
+    "on",
+    eventName,
+    ...Object.entries(options)
+      .filter(([, value]) => value === true)
+      .map(([key]) => key),
+  ].join(":");
 }
 
 function attrName(attr) {
@@ -207,6 +238,10 @@ function added(string) {
 
 function removed(string) {
   return string.replace(/^/gm, "➖");
+}
+
+function unnecessary(string) {
+  return string.replace(/^/gm, "️🚨");
 }
 
 class BrowserBase {
@@ -253,6 +288,9 @@ class BrowserBase {
             this._records.set(record.target, prev);
             break;
           }
+
+          default:
+            throw new Error(`Unknown MutationRecord type: ${record.type}`);
         }
       }
     });
@@ -424,7 +462,7 @@ test("Browser.document", async () => {
       <div>
         "http://localhost/"🔀"http://localhost/test"
         <a
-          href="/test"🔀"/test"
+          ️🚨href="/test"🔀"/test"
           on:click
         >
           "link"
