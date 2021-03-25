@@ -1067,6 +1067,7 @@ function _Morph_virtualizeElement(element, shouldVirtualize, divertHrefToApp) {
     }
   }
 
+  // Fixes https://github.com/elm/browser/issues/105
   if (divertHrefToApp && element.localName === "a") {
     element.addEventListener("click", divertHrefToApp(element));
   }
