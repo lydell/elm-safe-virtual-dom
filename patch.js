@@ -146,7 +146,7 @@ exports.replacements = [
   // https://github.com/facebook/react/issues/13525
   // https://github.com/facebook/react/issues/11896
   [
-    /\$elm\$html\$Html\$Attributes\$stringProperty(\('(?!value)\w+'\))/g,
+    /\$elm\$html\$Html\$Attributes\$stringProperty(,|\('(?!value)\w+'\))/g,
     "_VirtualDom_attribute$1",
     true,
   ],

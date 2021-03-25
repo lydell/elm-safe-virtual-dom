@@ -461,7 +461,7 @@ test("Browser.document", async () => {
       <div>
         "http://localhost/"🔀"http://localhost/test"
         <a
-          ️🚨href="/test"🔀"/test"
+          href="/test"
           on:click
         >
           "link"
@@ -489,8 +489,7 @@ describe("virtualize", () => {
         <div>
           "http://localhost/"
           <a
-            ➖href="/test"
-            ➖href="/test"
+            href="/test"
             ➕on:click
           >
             "link"
@@ -505,14 +504,14 @@ describe("virtualize", () => {
     await nextFrame();
 
     expect(b).toMatchInlineSnapshot(`
-      http://localhost/
+      http://localhost/test
       Application Title
 
       <body>
         <div>
-          "http://localhost/"
+          "http://localhost/"🔀"http://localhost/test"
           <a
-            ➕href="/test"
+            href="/test"
             on:click
           >
             "link"
