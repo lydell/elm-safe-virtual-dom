@@ -1,15 +1,24 @@
 /* global
   _Json_unwrap,
+  _List_Cons,
+  _List_Nil,
   _Morph_weakMap,
   _VirtualDom_addClass,
+  _VirtualDom_attribute,
+  _VirtualDom_attributeNS,
   _VirtualDom_divertHrefToApp,
   _VirtualDom_doc,
   _VirtualDom_makeCallback,
+  _VirtualDom_nodeNS,
   _VirtualDom_passiveSupported,
+  _VirtualDom_text,
   $elm$virtual_dom$VirtualDom$toHandlerInt,
+  A2,
+  A3,
+  A4,
+  exports,
   F2,
   Map,
-  exports,
   Set,
 */
 
@@ -20,8 +29,12 @@
 exports.replacements = [
   // ### _Browser_element / _Browser_document
   [
-    /var currNode = _VirtualDom_virtualize\((dom|body)Node\);/g,
-    "var handleNonElmChild = args && args.handleNonElmChild || _Morph_defaultHandleNonElmChild, timeLabel = args && args.time;",
+    /([ \t]*)var currNode = _VirtualDom_virtualize\((domNode|bodyNode)\);/g,
+    [
+      "var handleNonElmChild = args && args.handleNonElmChild || _Morph_defaultHandleNonElmChild;",
+      "$1var timeLabel = args && args.time;",
+      "$1if (args && args.virtualize) { _Morph_virtualize($2, args.virtualize, divertHrefToApp); }",
+    ].join("\n"),
   ],
   ["var patches = _VirtualDom_diff(currNode, nextNode);", ""],
   [
@@ -90,6 +103,8 @@ exports.replacements = [
       _Morph_morphProperties,
       _Morph_morphAttributes,
       _Morph_morphNamespacedAttributes,
+      _Morph_virtualize,
+      _Morph_virtualizeElement,
     ]
       .map(function (i) {
         return i.toString();
@@ -992,4 +1007,77 @@ function _VirtualDom_keyedNodeNS() {
       };
     });
   });
+}
+
+function _Morph_virtualize(node, shouldVirtualize, divertHrefToApp) {
+  var vNode;
+
+  switch (node.nodeType) {
+    case 3:
+      if (shouldVirtualize(node)) {
+        vNode = _VirtualDom_text(node.textContent);
+        _Morph_weakMap.set(node, vNode);
+        return vNode;
+      } else {
+        return undefined;
+      }
+
+    case 1:
+      if (shouldVirtualize(node)) {
+        return _Morph_virtualizeElement(
+          node,
+          shouldVirtualize,
+          divertHrefToApp
+        );
+      } else {
+        return undefined;
+      }
+
+    // Skip other types of nodes (comment nodes).
+    default:
+      return undefined;
+  }
+}
+
+function _Morph_virtualizeElement(element, shouldVirtualize, divertHrefToApp) {
+  var attrList = _List_Nil,
+    kidList = _List_Nil,
+    attr,
+    i,
+    vNode;
+
+  for (i = 0; i < element.attributes.length; i++) {
+    attr = element.attributes[i];
+    attrList = _List_Cons(
+      attr.namespaceURI === null
+        ? A2(_VirtualDom_attribute, attr.name, attr.value)
+        : A3(_VirtualDom_attributeNS, attr.namespaceURI, attr.name, attr.value),
+      attrList
+    );
+  }
+
+  for (i = 0; i < element.childNodes.length; i++) {
+    vNode = _Morph_virtualize(
+      element.childNodes[i],
+      shouldVirtualize,
+      divertHrefToApp
+    );
+    if (vNode !== undefined) {
+      kidList = _List_Cons(vNode, kidList);
+    }
+  }
+
+  if (divertHrefToApp && element.localName === "a") {
+    element.addEventListener("click", divertHrefToApp(element));
+  }
+
+  vNode = A4(
+    _VirtualDom_nodeNS,
+    element.namespaceURI,
+    element.localName,
+    attrList,
+    kidList
+  );
+  _Morph_weakMap.set(element, vNode);
+  return vNode;
 }

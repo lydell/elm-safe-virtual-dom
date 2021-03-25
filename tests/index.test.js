@@ -148,8 +148,7 @@ function stringifyAttributes(element, change) {
       const string = `${attrName(attr)}=${JSON.stringify(attr.value)}`;
       const inserted = change.addedAttributes.some(
         (attr2) =>
-          (attr2.name === attr.namattr2.name) === attr.name &&
-          attr2.namespaceURI === attr.namespaceURIe
+          attr2.name === attr.name && attr2.namespaceURI === attr.namespaceURI
       );
       return inserted ? added(string) : string;
     }),
@@ -387,7 +386,7 @@ beforeEach(() => {
     document.body.firstChild.remove();
   }
   document.title = "";
-  window.location.pathname = "/";
+  history.replaceState(null, "", "/");
 });
 
 test("Browser.sandbox", async () => {
@@ -470,4 +469,57 @@ test("Browser.document", async () => {
       </div>
     </body>
   `);
+});
+
+describe("virtualize", () => {
+  const html = `<div>http://localhost/<a href="/test">link</a></div><script></script>`;
+  const virtualize = (node) => node.localName !== "script";
+
+  test("with virtualization", async () => {
+    document.body.innerHTML = html;
+    const b = new BrowserDocument(Elm.App, { virtualize });
+
+    await nextFrame();
+
+    expect(b).toMatchInlineSnapshot(`
+      http://localhost/
+      Application Title
+
+      <body>
+        <div>
+          "http://localhost/"
+          <a
+            ➖undefined="/test"
+            ➖undefined="/test"
+            ➕on:click
+          >
+            "link"
+          </a>
+        </div>
+        <script/>
+      </body>
+    `);
+
+    b.querySelector("a").click();
+
+    await nextFrame();
+
+    expect(b).toMatchInlineSnapshot(`
+      http://localhost/
+      Application Title
+
+      <body>
+        <div>
+          "http://localhost/"
+          <a
+            ➕href="/test"
+            on:click
+          >
+            "link"
+          </a>
+        </div>
+        <script/>
+      </body>
+    `);
+  });
 });
