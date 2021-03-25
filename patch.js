@@ -112,6 +112,12 @@ exports.replacements = [
       .join("\n\n"),
   ],
 
+  // ### Don’t loop on errors during DOM diffing/patching.
+  [
+    "( _Browser_requestAnimationFrame(updateIfNeeded), draw(model), 1 )",
+    "( state = 0, draw(model), _Browser_requestAnimationFrame(updateIfNeeded), 1 )",
+  ],
+
   // ### https://github.com/elm/virtual-dom/issues/168
   [
     /var _VirtualDom_nodeNS = F2\(function\(namespace, tag\)\r?\n\{/,
