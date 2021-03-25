@@ -210,8 +210,8 @@ function eventListenerName(eventName, options) {
 
 function attrName(attr) {
   return attr.namespaceURI === null
-    ? attr.localName
-    : `${attr.namespaceURI}:${attr.localName}`;
+    ? attr.name
+    : `${attr.namespaceURI}:${attr.name}`;
 }
 
 function stringifyChildren(element, change, records) {
@@ -489,8 +489,8 @@ describe("virtualize", () => {
         <div>
           "http://localhost/"
           <a
-            ➖undefined="/test"
-            ➖undefined="/test"
+            ➖href="/test"
+            ➖href="/test"
             ➕on:click
           >
             "link"
