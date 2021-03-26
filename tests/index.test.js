@@ -52,14 +52,12 @@ test("Browser.sandbox", async () => {
 
   expect(b).toMatchInlineSnapshot(`
     <div>
-      <div>
-        ➕"modelInitialValue2"
-        ➕<button
-        ➕  ➕on:click:passive
-        ➕>
-        ➕  "Next"
-        ➕</button>
-      </div>
+      ➕"modelInitialValue2"
+      ➕<button
+      ➕  ➕on:click:passive
+      ➕>
+      ➕  "Next"
+      ➕</button>
     </div>
   `);
 
@@ -69,19 +67,17 @@ test("Browser.sandbox", async () => {
 
   expect(b).toMatchInlineSnapshot(`
     <div>
-      <div>
-        "modelInitialValue2"🔀"Updated"
-        <button
-          on:click:passive
-        >
-          "Next"
-        </button>
-      </div>
+      "modelInitialValue2"🔀"Updated"
+      <button
+        on:click:passive
+      >
+        "Next"
+      </button>
     </div>
   `);
 });
 
-test("Browser.document", async () => {
+test("Browser.application", async () => {
   const b = new BrowserDocument(Elm.App);
 
   await nextFrame();

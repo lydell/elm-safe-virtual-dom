@@ -244,7 +244,7 @@ class BrowserBase {
     this._records = new Map();
   }
 
-  _setupMutationObserver() {
+  _setupMutationObserver(node) {
     this._mutationObserver = new MutationObserver((records) => {
       for (const record of records) {
         switch (record.type) {
@@ -290,7 +290,7 @@ class BrowserBase {
       }
     });
 
-    this._mutationObserver.observe(this._getRoot(), {
+    this._mutationObserver.observe(node, {
       childList: true,
       subtree: true,
       attributes: true,
@@ -298,6 +298,14 @@ class BrowserBase {
       characterData: true,
       characterDataOldValue: true,
     });
+  }
+
+  querySelector(selector) {
+    return this._getRoot().querySelector(selector);
+  }
+
+  querySelectorAll(selector) {
+    return this._getRoot().querySelectorAll(selector);
   }
 
   serialize() {
@@ -312,40 +320,24 @@ class BrowserElement extends BrowserBase {
     super();
     this._wrapper = document.createElement("div");
     this._wrapper.append(options.node);
-    this._setupMutationObserver();
+    this._setupMutationObserver(this._wrapper);
     elmModule.init(options);
   }
 
   _getRoot() {
-    return this._wrapper;
-  }
-
-  querySelector(selector) {
-    return this._wrapper.firstChild.querySelector(selector);
-  }
-
-  querySelectorAll(selector) {
-    return this._wrapper.firstChild.querySelectorAll(selector);
+    return this._wrapper.firstChild;
   }
 }
 
 class BrowserDocument extends BrowserBase {
   constructor(elmModule, options = undefined) {
     super();
-    this._setupMutationObserver();
+    this._setupMutationObserver(document.documentElement);
     elmModule.init(options);
   }
 
   _getRoot() {
     return document.body;
-  }
-
-  querySelector(selector) {
-    return this._getRoot().querySelector(selector);
-  }
-
-  querySelectorAll(selector) {
-    return this._getRoot().querySelectorAll(selector);
   }
 
   serialize() {
