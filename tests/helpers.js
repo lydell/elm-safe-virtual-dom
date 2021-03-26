@@ -107,14 +107,17 @@ function stringify(node, records) {
     // Element.
     case 1: {
       const change = records.get(node) || initElementChange();
+      const startTag =
+        node.namespaceURI === "http://www.w3.org/1999/xhtml"
+          ? node.localName
+          : `${node.namespaceURI}:${node.localName}`;
+      const endTag = node.localName;
       return node.firstChild === null && change.removedNodes.length === 0
-        ? `<${node.localName}${stringifyAttributes(node, change)}/>`
-        : `<${node.localName}${stringifyAttributes(
+        ? `<${startTag}${stringifyAttributes(node, change)}/>`
+        : `<${startTag}${stringifyAttributes(
             node,
             change
-          )}>\n${stringifyChildren(node, change, records)}\n</${
-            node.localName
-          }>`;
+          )}>\n${stringifyChildren(node, change, records)}\n</${endTag}>`;
     }
 
     // Other.
@@ -176,7 +179,7 @@ function eventListenersForElementHelper(eventName, map) {
         return added(name);
       case "changed":
         options.status = "existing";
-        return `${eventListenerName(options.previous)}🔀${name}`;
+        return `${eventListenerName(eventName, options.previous)}🔀${name}`;
       case "unnecessary":
         options.status = "existing";
         return unnecessary(name);
@@ -241,7 +244,7 @@ class BrowserBase {
     this._records = new Map();
   }
 
-  _setupMutationObserver(node) {
+  _setupMutationObserver() {
     this._mutationObserver = new MutationObserver((records) => {
       for (const record of records) {
         switch (record.type) {
@@ -287,7 +290,7 @@ class BrowserBase {
       }
     });
 
-    this._mutationObserver.observe(node, {
+    this._mutationObserver.observe(this._getRoot(), {
       childList: true,
       subtree: true,
       attributes: true,
@@ -317,7 +320,7 @@ class BrowserElement extends BrowserBase {
     super();
     this._wrapper = document.createElement("div");
     this._wrapper.append(options.node);
-    this._setupMutationObserver(this._wrapper);
+    this._setupMutationObserver();
     elmModule.init(options);
   }
 
@@ -329,7 +332,7 @@ class BrowserElement extends BrowserBase {
 class BrowserDocument extends BrowserBase {
   constructor(elmModule, options = undefined) {
     super();
-    this._setupMutationObserver(document.body);
+    this._setupMutationObserver();
     elmModule.init(options);
   }
 
@@ -338,9 +341,12 @@ class BrowserDocument extends BrowserBase {
   }
 
   serialize() {
-    return [window.location.href, document.title, "", super.serialize()].join(
-      "\n"
-    );
+    return [
+      window.location.href,
+      JSON.stringify(document.title),
+      "",
+      super.serialize(),
+    ].join("\n");
   }
 }
 

@@ -88,7 +88,7 @@ test("Browser.document", async () => {
 
   expect(b).toMatchInlineSnapshot(`
     http://localhost/
-    Application Title
+    "Application Title"
 
     <body>
       ➕<div>
@@ -109,7 +109,7 @@ test("Browser.document", async () => {
 
   expect(b).toMatchInlineSnapshot(`
     http://localhost/test
-    Application Title
+    "Application Title"
 
     <body>
       <div>
@@ -137,7 +137,7 @@ describe("virtualize", () => {
 
     expect(b).toMatchInlineSnapshot(`
       http://localhost/
-      Application Title
+      "Application Title"
 
       <body>
         <div>
@@ -159,7 +159,7 @@ describe("virtualize", () => {
 
     expect(b).toMatchInlineSnapshot(`
       http://localhost/test
-      Application Title
+      "Application Title"
 
       <body>
         <div>
