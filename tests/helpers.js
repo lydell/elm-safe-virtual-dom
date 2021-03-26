@@ -300,14 +300,6 @@ class BrowserBase {
     });
   }
 
-  querySelector(selector) {
-    return this._getRoot().firstChild.querySelector(selector);
-  }
-
-  querySelectorAll(selector) {
-    return this._getRoot().firstChild.querySelectorAll(selector);
-  }
-
   serialize() {
     const string = stringify(this._getRoot(), this._records);
     this._records.clear();
@@ -327,6 +319,14 @@ class BrowserElement extends BrowserBase {
   _getRoot() {
     return this._wrapper;
   }
+
+  querySelector(selector) {
+    return this._wrapper.firstChild.querySelector(selector);
+  }
+
+  querySelectorAll(selector) {
+    return this._wrapper.firstChild.querySelectorAll(selector);
+  }
 }
 
 class BrowserDocument extends BrowserBase {
@@ -338,6 +338,14 @@ class BrowserDocument extends BrowserBase {
 
   _getRoot() {
     return document.body;
+  }
+
+  querySelector(selector) {
+    return this._getRoot().querySelector(selector);
+  }
+
+  querySelectorAll(selector) {
+    return this._getRoot().querySelectorAll(selector);
   }
 
   serialize() {

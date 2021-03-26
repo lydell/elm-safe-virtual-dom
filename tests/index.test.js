@@ -175,4 +175,67 @@ describe("virtualize", () => {
       </body>
     `);
   });
+
+  test("without virtualization", async () => {
+    document.body.innerHTML = html;
+    const b = new BrowserDocument(Elm.App);
+
+    await nextFrame();
+
+    expect(b).toMatchInlineSnapshot(`
+      http://localhost/
+      "Application Title"
+
+      <body>
+        <div>
+          "http://localhost/"
+          <a
+            href="/test"
+          >
+            "link"
+          </a>
+        </div>
+        <script/>
+        ➕<div>
+        ➕  "http://localhost/"
+        ➕  <a
+        ➕    href="/test"
+        ➕    ➕on:click
+        ➕  >
+        ➕    "link"
+        ➕  </a>
+        ➕</div>
+      </body>
+    `);
+
+    b.querySelectorAll("a")[1].click();
+
+    await nextFrame();
+
+    expect(b).toMatchInlineSnapshot(`
+      http://localhost/test
+      "Application Title"
+
+      <body>
+        <div>
+          "http://localhost/"
+          <a
+            href="/test"
+          >
+            "link"
+          </a>
+        </div>
+        <script/>
+        <div>
+          "http://localhost/"🔀"http://localhost/test"
+          <a
+            href="/test"
+            on:click
+          >
+            "link"
+          </a>
+        </div>
+      </body>
+    `);
+  });
 });
