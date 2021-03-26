@@ -43,7 +43,7 @@ beforeEach(() => {
   cleanupDocument();
 });
 
-test("Browser.sandbox", async () => {
+test("All virtual DOM node types", async () => {
   const b = new BrowserElement(Elm.KitchenSink, {
     node: document.createElement("div"),
   });
@@ -52,8 +52,39 @@ test("Browser.sandbox", async () => {
 
   expect(b).toMatchInlineSnapshot(`
     <div>
-      ➕"modelInitialValue2"
+      ➕"Text: 0"
+      ➕<div
+      ➕  class="class"
+      ➕>
+      ➕  "Element: 0"
+      ➕</div>
+      ➕<keygen/>
+      ➕"Lazy (every other): 0"
       ➕<button
+      ➕  id="num"
+      ➕  ➕on:click:passive
+      ➕>
+      ➕  "map: 0"
+      ➕</button>
+      ➕<div
+      ➕  id="markdown"
+      ➕>
+      ➕  <p>
+      ➕    <em>
+      ➕      "Markdown:"
+      ➕    </em>
+      ➕    " 0"
+      ➕  </p>
+      ➕  "\\n"
+      ➕</div>
+      ➕<http://www.w3.org/2000/svg:svg
+      ➕  http://www.w3.org/XML/1998/namespace:xml:lang="en-US"
+      ➕/>
+      ➕<button
+      ➕  style="outline: 1px solid red;"
+      ➕  id="next"
+      ➕  type="button"
+      ➕  tabindex="1"
       ➕  ➕on:click:passive
       ➕>
       ➕  "Next"
@@ -61,14 +92,158 @@ test("Browser.sandbox", async () => {
     </div>
   `);
 
-  b.querySelector("button").click();
+  b.querySelector("#next").click();
 
   await nextFrame();
 
   expect(b).toMatchInlineSnapshot(`
     <div>
-      "modelInitialValue2"🔀"Updated"
+      "Text: 0"🔀"Text: 1"
+      <div
+        class="class"
+      >
+        "Element: 0"🔀"Element: 1"
+      </div>
+      <keygen/>
+      "Lazy (every other): 0"
       <button
+        id="num"
+        on:click:passive
+      >
+        "map: 0"🔀"map: 1"
+      </button>
+      <div
+        id="markdown"
+      >
+        ➕<p>
+        ➕  <em>
+        ➕    "Markdown:"
+        ➕  </em>
+        ➕  " 1"
+        ➕</p>
+        ➕"\\n"
+        ➖<p>
+        ➖  <em>
+        ➖    "Markdown:"
+        ➖  </em>
+        ➖  " 0"
+        ➖</p>
+        ➖"\\n"
+      </div>
+      <http://www.w3.org/2000/svg:svg
+        http://www.w3.org/XML/1998/namespace:xml:lang="en-US"
+      />
+      <button
+        style="outline: 1px solid red;"
+        id="next"
+        type="button"
+        tabindex="1"
+        on:click:passive
+      >
+        "Next"
+      </button>
+    </div>
+  `);
+
+  b.querySelector("#next").click();
+
+  await nextFrame();
+
+  expect(b).toMatchInlineSnapshot(`
+    <div>
+      "Text: 1"🔀"Text: 2"
+      <div
+        class="class"
+      >
+        "Element: 1"🔀"Element: 2"
+      </div>
+      <keygen/>
+      "Lazy (every other): 0"🔀"Lazy (every other): 1"
+      <button
+        id="num"
+        on:click:passive
+      >
+        "map: 1"🔀"map: 2"
+      </button>
+      <div
+        id="markdown"
+      >
+        ➕<p>
+        ➕  <em>
+        ➕    "Markdown:"
+        ➕  </em>
+        ➕  " 2"
+        ➕</p>
+        ➕"\\n"
+        ➖<p>
+        ➖  <em>
+        ➖    "Markdown:"
+        ➖  </em>
+        ➖  " 1"
+        ➖</p>
+        ➖"\\n"
+      </div>
+      <http://www.w3.org/2000/svg:svg
+        http://www.w3.org/XML/1998/namespace:xml:lang="en-US"
+      />
+      <button
+        style="outline: 1px solid red;"
+        id="next"
+        type="button"
+        tabindex="1"
+        on:click:passive
+      >
+        "Next"
+      </button>
+    </div>
+  `);
+
+  b.querySelector("#num").click();
+
+  await nextFrame();
+
+  expect(b).toMatchInlineSnapshot(`
+    <div>
+      "Text: 2"🔀"Text: 101"
+      <div
+        class="class"
+      >
+        "Element: 2"🔀"Element: 101"
+      </div>
+      <keygen/>
+      "Lazy (every other): 1"🔀"Lazy (every other): 50"
+      <button
+        id="num"
+        on:click:passive
+      >
+        "map: 2"🔀"map: 101"
+      </button>
+      <div
+        id="markdown"
+      >
+        ➕<p>
+        ➕  <em>
+        ➕    "Markdown:"
+        ➕  </em>
+        ➕  " 101"
+        ➕</p>
+        ➕"\\n"
+        ➖<p>
+        ➖  <em>
+        ➖    "Markdown:"
+        ➖  </em>
+        ➖  " 2"
+        ➖</p>
+        ➖"\\n"
+      </div>
+      <http://www.w3.org/2000/svg:svg
+        http://www.w3.org/XML/1998/namespace:xml:lang="en-US"
+      />
+      <button
+        style="outline: 1px solid red;"
+        id="next"
+        type="button"
+        tabindex="1"
         on:click:passive
       >
         "Next"

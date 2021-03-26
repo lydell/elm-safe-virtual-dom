@@ -4,7 +4,7 @@ import Browser
 import Browser.Navigation as Nav
 import Html exposing (..)
 import Html.Attributes exposing (href)
-import Url
+import Url exposing (Url)
 
 
 main : Program () Model Msg
@@ -21,32 +21,27 @@ main =
 
 type alias Model =
     { key : Nav.Key
-    , url : Url.Url
-    , property : String
+    , url : Url
     }
 
 
-init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
+init : () -> Url -> Nav.Key -> ( Model, Cmd Msg )
 init () url key =
-    ( Model key url "modelInitialValue", Cmd.none )
+    ( { key = key
+      , url = url
+      }
+    , Cmd.none
+    )
 
 
 type Msg
-    = Msg1
-    | Msg2
-    | UrlRequested Browser.UrlRequest
+    = UrlRequested Browser.UrlRequest
     | UrlChanged Url.Url
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Msg1 ->
-            ( model, Cmd.none )
-
-        Msg2 ->
-            ( model, Cmd.none )
-
         UrlRequested urlRequest ->
             case urlRequest of
                 Browser.Internal url ->
