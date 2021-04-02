@@ -367,23 +367,22 @@ function _Morph_morphChildren(
   var //
     children = parentVNode.e,
     childrenLength = children.length,
-    childNodesLength = parent.childNodes.length,
     prevChildren = parentPrevNode.e,
     prevChildrenLength = prevChildren.length,
-    i = 0,
     j = 0,
     domNode,
+    nextDomNode = treeWalker.currentNode,
     newDomNode,
     prevNode,
     returned,
     vNode;
 
-  while (i < childNodesLength) {
-    domNode = treeWalker.currentNode;
+  while (nextDomNode !== null) {
+    domNode = nextDomNode;
     vNode = j < childrenLength ? children[j] : undefined;
     prevNode = _Morph_weakMap.get(domNode);
     if (prevNode === undefined) {
-      treeWalker.nextSibling();
+      nextDomNode = treeWalker.nextSibling();
       if (vNode !== undefined) {
         prevNode = j < prevChildrenLength ? prevChildren[j] : undefined;
         returned = handleNonElmChild(domNode, vNode, prevNode);
@@ -393,11 +392,6 @@ function _Morph_morphChildren(
       } else {
         handleNonElmChild(domNode);
       }
-      if (domNode.parentNode === parent) {
-        i++;
-      } else {
-        childNodesLength--;
-      }
     } else if (vNode !== undefined) {
       newDomNode = _Morph_morphNode(
         treeWalker,
@@ -405,17 +399,15 @@ function _Morph_morphChildren(
         sendToApp,
         handleNonElmChild
       );
-      treeWalker.nextSibling();
+      nextDomNode = treeWalker.nextSibling();
       if (domNode !== newDomNode) {
         parent.replaceChild(newDomNode, domNode);
       }
-      i++;
       j++;
     } else {
-      treeWalker.nextSibling();
+      nextDomNode = treeWalker.nextSibling();
       _Morph_weakMap.delete(domNode);
       parent.removeChild(domNode);
-      childNodesLength--;
     }
   }
 
@@ -610,7 +602,7 @@ function _Morph_morphChildrenKeyed(
           sendToApp,
           handleNonElmChild
         );
-        parent.replace(newDomNode, domNode2);
+        parent.replaceChild(newDomNode, domNode2);
       }
       i++;
       j++;
