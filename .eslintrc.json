@@ -1,8 +1,6 @@
 {
   "root": true,
-  "extends": [
-    "eslint:recommended"
-  ],
+  "extends": ["eslint:recommended"],
   "rules": {
     "curly": "error",
     "no-restricted-syntax": [
@@ -15,12 +13,8 @@
   },
   "overrides": [
     {
-      "files": [
-        "*.js"
-      ],
-      "excludedFiles": [
-        "patch.js"
-      ],
+      "files": ["*.js"],
+      "excludedFiles": ["patch.js"],
       "env": {
         "node": true,
         "es2020": true
@@ -28,10 +22,7 @@
       "rules": {
         "no-var": "error",
         "object-shorthand": "error",
-        "one-var": [
-          "error",
-          "never"
-        ],
+        "one-var": ["error", "never"],
         "prefer-arrow-callback": "error",
         "prefer-const": "error",
         "prefer-destructuring": [
@@ -52,9 +43,7 @@
       }
     },
     {
-      "files": [
-        "patch.js"
-      ],
+      "files": ["patch.js"],
       "env": {
         "browser": true
       },
@@ -70,10 +59,7 @@
     },
     {
       "files": "tests/**/*.js",
-      "extends": [
-        "plugin:jest/recommended",
-        "plugin:jest/style"
-      ],
+      "extends": ["plugin:jest/recommended", "plugin:jest/style"],
       "env": {
         "browser": true
       }

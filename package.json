@@ -1,5 +1,7 @@
 {
-  "private": true,
+  "name": "elm-safe-virtual-dom",
+  "version": "0.0.1",
+  "bin": "./bin.js",
   "scripts": {
     "build": "elm make src/Main.elm --output elm.js && node bin.js elm.js",
     "debug": "elm make src/Main.elm --output elm.js --debug && node bin.js elm.js",
@@ -10,7 +12,7 @@
     "only-html": "elm make src/OnlyHtml.elm --output elm.js && node bin.js elm.js",
     "keylist": "elm make src/KeyList.elm --output elm.js && node bin.js elm.js",
     "elm-ui": "elm make src/ElmUi.elm --output elm.js && node bin.js elm.js",
-    "test": "eslint . --report-unused-disable-directives && prettier --check ."
+    "test": "eslint . --report-unused-disable-directives && prettier --check . && jest"
   },
   "dependencies": {
     "elm-tooling": "^1.2.0"
