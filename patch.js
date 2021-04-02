@@ -212,7 +212,7 @@ function _Morph_morphRootNode(
   _Morph_weakMap.set(domNode, nextNode);
 
   var newDomNode = _Morph_morphNode(
-    domNode,
+    document.createTreeWalker(domNode),
     nextNode,
     sendToApp,
     handleNonElmChild
@@ -230,16 +230,16 @@ function _Morph_morphRootNode(
   return newDomNode;
 }
 
-function _Morph_morphNode(domNode, vNode, sendToApp, handleNonElmChild) {
+function _Morph_morphNode(treeWalker, vNode, sendToApp, handleNonElmChild) {
   switch (vNode.$) {
     // Html.text
     case 0:
-      return _Morph_morphText(domNode, vNode);
+      return _Morph_morphText(treeWalker, vNode);
 
     // Html.div etc
     case 1:
       return _Morph_morphElement(
-        domNode,
+        treeWalker,
         vNode,
         sendToApp,
         handleNonElmChild,
@@ -249,7 +249,7 @@ function _Morph_morphNode(domNode, vNode, sendToApp, handleNonElmChild) {
     // Html.Keyed.node etc
     case 2:
       return _Morph_morphElement(
-        domNode,
+        treeWalker,
         vNode,
         sendToApp,
         handleNonElmChild,
@@ -258,25 +258,26 @@ function _Morph_morphNode(domNode, vNode, sendToApp, handleNonElmChild) {
 
     // Markdown.toHtml etc
     case 3:
-      return _Morph_morphCustom(domNode, vNode, sendToApp);
+      return _Morph_morphCustom(treeWalker, vNode, sendToApp);
 
     // Html.map
     case 4:
-      return _Morph_morphMap(domNode, vNode, sendToApp, handleNonElmChild);
+      return _Morph_morphMap(treeWalker, vNode, sendToApp, handleNonElmChild);
 
     // Html.Lazy.lazy etc
     case 5:
-      return _Morph_morphLazy(domNode, vNode, sendToApp, handleNonElmChild);
+      return _Morph_morphLazy(treeWalker, vNode, sendToApp, handleNonElmChild);
 
     default:
       throw new Error("Unknown vNode.$: " + vNode.$);
   }
 }
 
-function _Morph_morphText(domNode, vNode) {
+function _Morph_morphText(treeWalker, vNode) {
   var //
     text = vNode.a,
-    newDomNode;
+    domNode = treeWalker !== undefined ? treeWalker.currentNode : undefined;
+
   if (
     domNode !== undefined &&
     domNode.nodeType === 3 &&
@@ -288,13 +289,14 @@ function _Morph_morphText(domNode, vNode) {
     _Morph_weakMap.set(domNode, vNode);
     return domNode;
   }
-  newDomNode = _VirtualDom_doc.createTextNode(text);
-  _Morph_weakMap.set(newDomNode, vNode);
-  return newDomNode;
+
+  domNode = _VirtualDom_doc.createTextNode(text);
+  _Morph_weakMap.set(domNode, vNode);
+  return domNode;
 }
 
 function _Morph_morphElement(
-  domNode,
+  treeWalker,
   vNode,
   sendToApp,
   handleNonElmChild,
@@ -306,7 +308,7 @@ function _Morph_morphElement(
       vNode.f === undefined ? "http://www.w3.org/1999/xhtml" : vNode.f,
     facts = vNode.d,
     children = vNode.e,
-    newDomNode,
+    domNode = treeWalker !== undefined ? treeWalker.currentNode : undefined,
     prevNode;
 
   if (
@@ -317,29 +319,33 @@ function _Morph_morphElement(
     (prevNode = _Morph_weakMap.get(domNode)) !== undefined
   ) {
     _Morph_morphFacts(domNode, prevNode, facts, sendToApp);
-    if (domNode.firstChild === null) {
+    if (treeWalker.firstChild() === null) {
       _Morph_addChildren(domNode, children, sendToApp, handleNonElmChild);
     } else {
-      morphChildren(domNode, vNode, prevNode, sendToApp, handleNonElmChild);
+      morphChildren(
+        treeWalker,
+        domNode,
+        vNode,
+        prevNode,
+        sendToApp,
+        handleNonElmChild
+      );
     }
     _Morph_weakMap.set(domNode, vNode);
     return domNode;
   }
 
-  newDomNode = _VirtualDom_doc.createElementNS(namespaceURI, nodeName);
-  _Morph_weakMap.set(newDomNode, vNode);
+  domNode = _VirtualDom_doc.createElementNS(namespaceURI, nodeName);
+  _Morph_weakMap.set(domNode, vNode);
 
   if (_VirtualDom_divertHrefToApp && nodeName === "a") {
-    newDomNode.addEventListener(
-      "click",
-      _VirtualDom_divertHrefToApp(newDomNode)
-    );
+    domNode.addEventListener("click", _VirtualDom_divertHrefToApp(domNode));
   }
 
-  _Morph_morphFacts(newDomNode, undefined, facts, sendToApp);
-  _Morph_addChildren(newDomNode, children, sendToApp, handleNonElmChild);
+  _Morph_morphFacts(domNode, undefined, facts, sendToApp);
+  _Morph_addChildren(domNode, children, sendToApp, handleNonElmChild);
 
-  return newDomNode;
+  return domNode;
 }
 
 function _Morph_addChildren(parent, children, sendToApp, handleNonElmChild) {
@@ -351,6 +357,7 @@ function _Morph_addChildren(parent, children, sendToApp, handleNonElmChild) {
 }
 
 function _Morph_morphChildren(
+  treeWalker,
   parent,
   parentVNode,
   parentPrevNode,
@@ -359,7 +366,10 @@ function _Morph_morphChildren(
 ) {
   var //
     children = parentVNode.e,
+    childrenLength = children.length,
+    childNodesLength = parent.childNodes.length,
     prevChildren = parentPrevNode.e,
+    prevChildrenLength = prevChildren.length,
     i = 0,
     j = 0,
     domNode,
@@ -368,13 +378,14 @@ function _Morph_morphChildren(
     returned,
     vNode;
 
-  while (i < parent.childNodes.length) {
-    domNode = parent.childNodes[i];
-    vNode = j < children.length ? children[j] : undefined;
+  while (i < childNodesLength) {
+    domNode = treeWalker.currentNode;
+    vNode = j < childrenLength ? children[j] : undefined;
     prevNode = _Morph_weakMap.get(domNode);
     if (prevNode === undefined) {
+      treeWalker.nextSibling();
       if (vNode !== undefined) {
-        prevNode = j < prevChildren.length ? prevChildren[j] : undefined;
+        prevNode = j < prevChildrenLength ? prevChildren[j] : undefined;
         returned = handleNonElmChild(domNode, vNode, prevNode);
         if (returned === vNode) {
           j++;
@@ -384,36 +395,44 @@ function _Morph_morphChildren(
       }
       if (domNode.parentNode === parent) {
         i++;
+      } else {
+        childNodesLength--;
       }
     } else if (vNode !== undefined) {
       newDomNode = _Morph_morphNode(
-        domNode,
+        treeWalker,
         vNode,
         sendToApp,
         handleNonElmChild
       );
+      treeWalker.nextSibling();
       if (domNode !== newDomNode) {
         parent.replaceChild(newDomNode, domNode);
       }
       i++;
       j++;
     } else {
+      treeWalker.nextSibling();
       _Morph_weakMap.delete(domNode);
       parent.removeChild(domNode);
+      childNodesLength--;
     }
   }
 
-  for (; j < children.length; j++) {
+  for (; j < childrenLength; j++) {
     parent.appendChild(
       _Morph_morphNode(undefined, children[j], sendToApp, handleNonElmChild)
     );
   }
+
+  treeWalker.currentNode = parent;
 }
 
 // This runs from both ends as far as it can: https://neil.fraser.name/writing/diff/
 // A swap can get us going again: https://github.com/localvoid/kivi/blob/master/lib/vnode.ts#L1288-L1318
 // If we get stuck, use the slower _Morph_morphChildrenKeyedMapped technique for the rest.
 function _Morph_morphChildrenKeyed(
+  treeWalker,
   parent,
   parentVNode,
   parentPrevNode,
@@ -423,6 +442,7 @@ function _Morph_morphChildrenKeyed(
   var //
     children = parentVNode.e,
     prevChildren = parentPrevNode.e,
+    prevChildrenLength = prevChildren.length,
     i = 0,
     i2 = parent.childNodes.length - 1,
     j = 0,
@@ -443,12 +463,13 @@ function _Morph_morphChildrenKeyed(
     stuck = false;
 
     while (i <= i2 && j <= j2) {
-      domNode = parent.childNodes[i];
+      domNode = treeWalker.currentNode;
       vNode = children[j];
       prevNode = _Morph_weakMap.get(domNode);
       if (prevNode === undefined) {
+        treeWalker.nextSibling();
         if (vNode !== undefined) {
-          prevNode = j < prevChildren.length ? prevChildren[j] : undefined;
+          prevNode = j < prevChildrenLength ? prevChildren[j] : undefined;
           returned = handleNonElmChild(domNode, vNode, prevNode);
           if (returned === vNode) {
             j++;
@@ -463,17 +484,19 @@ function _Morph_morphChildrenKeyed(
         }
       } else if (vNode.key === prevNode.key) {
         newDomNode = _Morph_morphNode(
-          domNode,
+          treeWalker,
           vNode,
           sendToApp,
           handleNonElmChild
         );
+        treeWalker.nextSibling();
         if (domNode !== newDomNode) {
           parent.replaceChild(newDomNode, domNode);
         }
         i++;
         j++;
       } else if (!parentVNode.keys.has(prevNode.key)) {
+        treeWalker.nextSibling();
         parent.removeChild(domNode);
         i2--;
       } else if (
@@ -501,14 +524,16 @@ function _Morph_morphChildrenKeyed(
     }
 
     stuck = false;
+    treeWalker.currentNode = parent.childNodes[i2];
 
     while (i2 > i && j2 > j) {
-      domNode2 = parent.childNodes[i2];
+      domNode2 = treeWalker.currentNode;
       vNode2 = children[j2];
       prevNode2 = _Morph_weakMap.get(domNode2);
       if (prevNode2 === undefined) {
+        treeWalker.previousSibling();
         if (vNode !== undefined) {
-          prevNode = j2 < prevChildren.length ? prevChildren[j2] : undefined;
+          prevNode = j2 < prevChildrenLength ? prevChildren[j2] : undefined;
           returned = handleNonElmChild(domNode, vNode, prevNode);
           if (returned === vNode) {
             j2--;
@@ -521,17 +546,19 @@ function _Morph_morphChildrenKeyed(
         }
       } else if (vNode2.key === prevNode2.key) {
         newDomNode = _Morph_morphNode(
-          domNode2,
+          treeWalker,
           vNode2,
           sendToApp,
           handleNonElmChild
         );
+        treeWalker.previousSibling();
         if (domNode2 !== newDomNode) {
           parent.replaceChild(newDomNode, domNode2);
         }
         i2--;
         j2--;
       } else if (!parentVNode.keys.has(prevNode2.key)) {
+        treeWalker.previousSibling();
         parent.removeChild(domNode2);
         i2--;
       } else if (
@@ -589,9 +616,11 @@ function _Morph_morphChildrenKeyed(
       j++;
       i2--;
       j2--;
+      treeWalker.currentNode = parent.childNodes[i];
     } else {
       _Morph_morphChildrenKeyedMapped(
         parent,
+        treeWalker,
         parentVNode,
         children,
         sendToApp,
@@ -605,9 +634,12 @@ function _Morph_morphChildrenKeyed(
     }
   }
 
+  treeWalker.currentNode = parent.childNodes[i2];
+
   for (; i2 >= i; i2--) {
-    domNode = parent.childNodes[i2];
+    domNode = treeWalker.currentNode;
     prevNode = _Morph_weakMap.get(domNode);
+    treeWalker.previousSibling();
     if (prevNode === undefined) {
       handleNonElmChild(domNode);
     } else {
@@ -621,10 +653,13 @@ function _Morph_morphChildrenKeyed(
       _Morph_morphNode(undefined, children[j], sendToApp, handleNonElmChild)
     );
   }
+
+  treeWalker.currentNode = parent;
 }
 
 function _Morph_morphChildrenKeyedMapped(
   parent,
+  treeWalker,
   parentVNode,
   children,
   sendToApp,
@@ -643,9 +678,12 @@ function _Morph_morphChildrenKeyedMapped(
     newDomNode,
     prevNode;
 
+  treeWalker.currentNode = parent.childNodes[i2];
+
   for (k = i2; k >= i; k--) {
-    child = parent.childNodes[k];
+    child = treeWalker.currentNode;
     prevNode = _Morph_weakMap.get(child);
+    treeWalker.previousSibling();
     if (prevNode === undefined) {
       handleNonElmChild(child);
     } else if (map.has(prevNode.key) || !parentVNode.keys.has(prevNode.key)) {
@@ -662,8 +700,9 @@ function _Morph_morphChildrenKeyedMapped(
     child = children[j];
     domNode = map.get(child.key);
     if (domNode !== undefined) {
+      treeWalker.currentNode = domNode;
       newDomNode = _Morph_morphNode(
-        domNode,
+        treeWalker,
         child,
         sendToApp,
         handleNonElmChild
@@ -695,13 +734,13 @@ function _Morph_morphChildrenKeyedMapped(
   }
 }
 
-function _Morph_morphCustom(domNode, vNode, sendToApp) {
+function _Morph_morphCustom(treeWalker, vNode, sendToApp) {
   var //
     facts = vNode.d,
     model = vNode.g,
     render = vNode.h,
     diff = vNode.i,
-    newDomNode,
+    domNode = treeWalker !== undefined ? treeWalker.currentNode : undefined,
     patch,
     prevNode;
 
@@ -713,18 +752,20 @@ function _Morph_morphCustom(domNode, vNode, sendToApp) {
     prevNode.h === render
   ) {
     patch = diff(prevNode.g, model);
-    newDomNode = patch === false ? domNode : patch(domNode);
-    _Morph_morphFacts(newDomNode, prevNode, facts, sendToApp);
-    return newDomNode;
+    if (patch !== false) {
+      domNode = patch(domNode);
+    }
+    _Morph_morphFacts(domNode, prevNode, facts, sendToApp);
+    return domNode;
   }
 
-  newDomNode = render(model);
-  _Morph_weakMap.set(newDomNode, vNode);
-  _Morph_morphFacts(newDomNode, undefined, facts, sendToApp);
-  return newDomNode;
+  domNode = render(model);
+  _Morph_weakMap.set(domNode, vNode);
+  _Morph_morphFacts(domNode, undefined, facts, sendToApp);
+  return domNode;
 }
 
-function _Morph_morphMap(domNode, vNode, sendToApp, handleNonElmChild) {
+function _Morph_morphMap(treeWalker, vNode, sendToApp, handleNonElmChild) {
   var //
     tagger = vNode.j,
     actualVNode = vNode.k;
@@ -732,7 +773,7 @@ function _Morph_morphMap(domNode, vNode, sendToApp, handleNonElmChild) {
   actualVNode.key = vNode.key;
 
   return _Morph_morphNode(
-    domNode,
+    treeWalker,
     actualVNode,
     function htmlMap(message, stopPropagation) {
       return sendToApp(tagger(message), stopPropagation);
@@ -741,7 +782,7 @@ function _Morph_morphMap(domNode, vNode, sendToApp, handleNonElmChild) {
   );
 }
 
-function _Morph_morphLazy(domNode, vNode, sendToApp, handleNonElmChild) {
+function _Morph_morphLazy(treeWalker, vNode, sendToApp, handleNonElmChild) {
   var //
     refs = vNode.l,
     thunk = vNode.m,
@@ -751,8 +792,8 @@ function _Morph_morphLazy(domNode, vNode, sendToApp, handleNonElmChild) {
     prevNode;
 
   if (
-    domNode !== undefined &&
-    (prevNode = _Morph_weakMap.get(domNode)) !== undefined &&
+    treeWalker !== undefined &&
+    (prevNode = _Morph_weakMap.get(treeWalker.currentNode)) !== undefined &&
     prevNode.lazy !== undefined
   ) {
     lazyRefs = prevNode.lazy.l;
@@ -766,7 +807,7 @@ function _Morph_morphLazy(domNode, vNode, sendToApp, handleNonElmChild) {
   prevNode = same ? prevNode : thunk();
   prevNode.key = vNode.key;
   prevNode.lazy = vNode;
-  return _Morph_morphNode(domNode, prevNode, sendToApp, handleNonElmChild);
+  return _Morph_morphNode(treeWalker, prevNode, sendToApp, handleNonElmChild);
 }
 
 function _Morph_morphFacts(domNode, prevNode, facts, sendToApp) {
