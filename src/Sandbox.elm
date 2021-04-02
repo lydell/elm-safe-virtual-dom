@@ -47,7 +47,11 @@ view : Model -> Html Msg
 view model =
     div []
         [ text "Count: "
-        , text (String.fromInt model.count)
+        , if model.count |> modBy 2 |> (==) 0 then
+            text (String.fromInt model.count)
+
+          else
+            Html.em [] [ text (String.fromInt model.count) ]
         , button [ onClick Next ] [ text "Nästa" ]
         , input [ onInput Input, Html.Attributes.value model.text ] []
         , input [ Html.Attributes.type_ "checkbox", Html.Attributes.checked True, onCheck (always Next) ] []
