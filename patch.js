@@ -33,7 +33,7 @@ exports.replacements = [
     [
       "var handleNonElmChild = args && args.handleNonElmChild || _Morph_defaultHandleNonElmChild;",
       "$1var timeLabel = args && args.time;",
-      "$1if (args && args.virtualize) { _Morph_virtualize(document.createTreeWalker($2), args.virtualize, divertHrefToApp); }",
+      "$1_Morph_virtualize(document.createTreeWalker($2), args && args.virtualize || _Morph_defaultShouldVirtualize, typeof divertHrefToApp !== 'undefined' && divertHrefToApp);",
     ].join("\n"),
   ],
   ["var patches = _VirtualDom_diff(currNode, nextNode);", ""],
@@ -85,6 +85,7 @@ exports.replacements = [
     [
       "var _VirtualDom_divertHrefToApp;",
       "var _Morph_weakMap = new WeakMap();",
+      _Morph_defaultShouldVirtualize,
       _Morph_defaultHandleNonElmChild,
       _Morph_morphRootNode,
       _Morph_morphNode,
@@ -183,6 +184,16 @@ exports.debuggerReplacements = [
   ["currPopout = nextPopout;", ""],
 ];
 
+function _Morph_defaultShouldVirtualize(node) {
+  switch (node.nodeName) {
+    case "SCRIPT":
+    case "NOSCRIPT":
+      return false;
+    default:
+      return true;
+  }
+}
+
 function _Morph_defaultHandleNonElmChild(child, vNode, prevNode) {
   if (child.nodeName === "FONT") {
     if (
@@ -208,8 +219,6 @@ function _Morph_morphRootNode(
   if (timeLabel !== undefined) {
     console.time(timeLabel);
   }
-
-  _Morph_weakMap.set(domNode, nextNode);
 
   var newDomNode = _Morph_morphNode(
     document.createTreeWalker(domNode),
@@ -845,12 +854,11 @@ function _Morph_morphFacts(domNode, prevNode, facts, sendToApp) {
   // All of these are diffed against the previous virtual DOM rather than the
   // actual DOM in some cases. This means that:
   // - There might be excess events/styles/properties/attributes set by scripts or extensions.
-  // - styles cannot be guaranteed to be set to the correct value – a script or
-  //   extension might have changed it, while the virtual DOM still indicating
-  //   that no change is needed. They might also be changed to `!important`.
-  // - Attributes still use `.getAttribute()` to compare to the actual DOM,
-  //   though. And properties compare to the actual DOM too – see
-  //   `_Morph_morphProperties`.
+  // - Events/styles/properties/attributes might be set to something else or be removed by scripts or extensions.
+  // - Styles might be changed to `!important`.
+  // - Attributes _could_ use `.getAttribute()` to compare to the actual DOM,
+  //   but it’s slow.
+  // - Properties actually _do_ compare to the actual DOM too – see `_Morph_morphProperties`.
 
   // It’s not possible to inspect an elements event listeners.
   _Morph_morphEvents(domNode, d.fns, facts, sendToApp);
@@ -984,7 +992,7 @@ function _Morph_morphAttributes(domNode, previousAttributes, attributes) {
 
   for (key in attributes) {
     value = attributes[key];
-    if (domNode.getAttribute(key) !== value) {
+    if (value !== previousAttributes[key]) {
       domNode.setAttribute(key, value);
     }
   }
@@ -1005,18 +1013,20 @@ function _Morph_morphNamespacedAttributes(
     key,
     namespace,
     pair,
-    previousNamespace,
+    previous,
     value;
 
   for (key in namespacedAttributes) {
     pair = namespacedAttributes[key];
     namespace = pair.f;
     value = pair.o;
-    previousNamespace = previousNamespacedAttributes[key];
-    if (previousNamespace !== undefined && previousNamespace !== namespace) {
-      domNode.removeAttributeNS(previousNamespace, key);
-    }
-    if (domNode.getAttributeNS(namespace, key) !== value) {
+    previous = previousNamespacedAttributes[key];
+    if (previous === undefined) {
+      domNode.setAttributeNS(namespace, key, value);
+    } else if (previous.f !== namespace) {
+      domNode.removeAttributeNS(previous, key);
+      domNode.setAttributeNS(namespace, key, value);
+    } else if (value !== previous.o) {
       domNode.setAttributeNS(namespace, key, value);
     }
   }
