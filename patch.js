@@ -33,7 +33,7 @@ exports.replacements = [
     [
       "var handleNonElmChild = args && args.handleNonElmChild || _Morph_defaultHandleNonElmChild;",
       "$1var timeLabel = args && args.time;",
-      "$1if (args && args.virtualize) { _Morph_virtualize($2, args.virtualize, divertHrefToApp); }",
+      "$1if (args && args.virtualize) { _Morph_virtualize(document.createTreeWalker($2), args.virtualize, divertHrefToApp); }",
     ].join("\n"),
   ],
   ["var patches = _VirtualDom_diff(currNode, nextNode);", ""],
@@ -1054,8 +1054,10 @@ function _VirtualDom_keyedNodeNS() {
   });
 }
 
-function _Morph_virtualize(node, shouldVirtualize, divertHrefToApp) {
-  var vNode;
+function _Morph_virtualize(treeWalker, shouldVirtualize, divertHrefToApp) {
+  var //
+    node = treeWalker.currentNode,
+    vNode;
 
   switch (node.nodeType) {
     case 3:
@@ -1070,7 +1072,7 @@ function _Morph_virtualize(node, shouldVirtualize, divertHrefToApp) {
     case 1:
       if (shouldVirtualize(node)) {
         return _Morph_virtualizeElement(
-          node,
+          treeWalker,
           shouldVirtualize,
           divertHrefToApp
         );
@@ -1084,9 +1086,15 @@ function _Morph_virtualize(node, shouldVirtualize, divertHrefToApp) {
   }
 }
 
-function _Morph_virtualizeElement(element, shouldVirtualize, divertHrefToApp) {
-  var attrList = _List_Nil,
+function _Morph_virtualizeElement(
+  treeWalker,
+  shouldVirtualize,
+  divertHrefToApp
+) {
+  var //
+    attrList = _List_Nil,
     kidList = _List_Nil,
+    element = treeWalker.currentNode,
     attr,
     i,
     vNode;
@@ -1101,15 +1109,14 @@ function _Morph_virtualizeElement(element, shouldVirtualize, divertHrefToApp) {
     );
   }
 
-  for (i = 0; i < element.childNodes.length; i++) {
-    vNode = _Morph_virtualize(
-      element.childNodes[i],
-      shouldVirtualize,
-      divertHrefToApp
-    );
-    if (vNode !== undefined) {
-      kidList = _List_Cons(vNode, kidList);
-    }
+  if (treeWalker.firstChild() !== null) {
+    do {
+      vNode = _Morph_virtualize(treeWalker, shouldVirtualize, divertHrefToApp);
+      if (vNode !== undefined) {
+        kidList = _List_Cons(vNode, kidList);
+      }
+    } while (treeWalker.nextSibling() !== null);
+    treeWalker.currentNode = element;
   }
 
   // Fixes https://github.com/elm/browser/issues/105
