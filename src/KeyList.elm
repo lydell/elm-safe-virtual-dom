@@ -39,7 +39,7 @@ init : () -> ( Model, Cmd Msg )
 init () =
     let
         items =
-            List.range 1 9
+            List.range 1 10000
                 |> List.map initItem
                 |> Array.fromList
     in

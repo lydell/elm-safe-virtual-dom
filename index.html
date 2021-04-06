@@ -89,7 +89,10 @@
       } else if (Elm.Sandbox) {
         Elm.Sandbox.init({ node: document.getElementById("main") });
       } else if (Elm.KeyList) {
-        Elm.KeyList.init({ node: document.getElementById("main") });
+        Elm.KeyList.init({
+          node: document.getElementById("main"),
+          time: "render",
+        });
       } else if (Elm.ElmUi) {
         Elm.ElmUi.init({ node: document.getElementById("main") });
       } else {
