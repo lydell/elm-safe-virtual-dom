@@ -349,7 +349,7 @@ describe("virtualize", () => {
 
   test("without virtualization", async () => {
     document.body.innerHTML = html;
-    const b = new BrowserDocument(Elm.App);
+    const b = new BrowserDocument(Elm.App, { virtualize: () => false });
 
     await nextFrame();
 

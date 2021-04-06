@@ -1144,7 +1144,7 @@ function _Morph_virtualizeElement(
     i,
     vNode;
 
-  for (i = 0; i < element.attributes.length; i++) {
+  for (i = element.attributes.length - 1; i >= 0; i--) {
     attr = element.attributes[i];
     attrList = _List_Cons(
       attr.namespaceURI === null
@@ -1154,13 +1154,13 @@ function _Morph_virtualizeElement(
     );
   }
 
-  if (treeWalker.firstChild() !== null) {
+  if (treeWalker.lastChild() !== null) {
     do {
       vNode = _Morph_virtualize(treeWalker, shouldVirtualize, divertHrefToApp);
       if (vNode !== undefined) {
         kidList = _List_Cons(vNode, kidList);
       }
-    } while (treeWalker.nextSibling() !== null);
+    } while (treeWalker.previousSibling() !== null);
     treeWalker.currentNode = element;
   }
 
