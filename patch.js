@@ -663,6 +663,7 @@ function _Morph_morphChildrenKeyed(
         j,
         j2
       );
+      treeWalker.currentNode = parent;
       return;
     }
 
