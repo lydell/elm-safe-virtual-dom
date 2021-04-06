@@ -426,7 +426,7 @@ function _Morph_morphChildren(
     );
   }
 
-  treeWalker.currentNode = parent;
+  treeWalker.parentNode();
 }
 
 // This runs from both ends as far as it can: https://neil.fraser.name/writing/diff/
@@ -663,7 +663,7 @@ function _Morph_morphChildrenKeyed(
         j,
         j2
       );
-      treeWalker.currentNode = parent;
+      treeWalker.parentNode();
       return;
     }
 
@@ -690,7 +690,7 @@ function _Morph_morphChildrenKeyed(
     );
   }
 
-  treeWalker.currentNode = parent;
+  treeWalker.parentNode();
 }
 
 function _Morph_morphChildrenKeyedMapped(
