@@ -31,7 +31,7 @@ exports.replacements = [
   [
     /([ \t]*)var currNode = _VirtualDom_virtualize\((domNode|bodyNode)\);/g,
     [
-      "var handleNonElmChild = args && args.handleNonElmChild || _Morph_defaultHandleNonElmChild;",
+      "$1var handleNonElmChild = args && args.handleNonElmChild || _Morph_defaultHandleNonElmChild;",
       "$1var timeLabel = args && args.time;",
       "$1_Morph_virtualize(document.createTreeWalker($2), args && args.virtualize || _Morph_defaultShouldVirtualize, typeof divertHrefToApp !== 'undefined' && divertHrefToApp);",
     ].join("\n"),
