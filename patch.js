@@ -576,10 +576,11 @@ function _Morph_morphChildrenKeyed(
       break;
     }
 
-    // It’s a swap.
     if (vNode.key === prevNode2.key && prevNode.key === vNode2.key) {
+      // It’s a swap.
+      treeWalker.currentNode = domNode2;
       newDomNode = _Morph_morphNode(
-        domNode2,
+        treeWalker,
         vNode,
         sendToApp,
         handleNonElmChild
@@ -587,8 +588,9 @@ function _Morph_morphChildrenKeyed(
       if (newDomNode === domNode2) {
         nextDomNode = domNode2.nextSibling;
         parent.replaceChild(newDomNode, domNode);
+        treeWalker.currentNode = domNode;
         newDomNode = _Morph_morphNode(
-          domNode,
+          treeWalker,
           vNode2,
           sendToApp,
           handleNonElmChild
@@ -596,8 +598,9 @@ function _Morph_morphChildrenKeyed(
         parent.insertBefore(newDomNode, nextDomNode);
       } else {
         parent.replaceChild(newDomNode, domNode);
+        treeWalker.currentNode = domNode;
         newDomNode = _Morph_morphNode(
-          domNode,
+          treeWalker,
           vNode2,
           sendToApp,
           handleNonElmChild
@@ -608,7 +611,36 @@ function _Morph_morphChildrenKeyed(
       j++;
       i2--;
       j2--;
-      treeWalker.currentNode = parent.childNodes[i];
+    } else if (vNode.key === prevNode2.key) {
+      // A node has been moved up.
+      treeWalker.currentNode = domNode2;
+      newDomNode = _Morph_morphNode(
+        treeWalker,
+        vNode,
+        sendToApp,
+        handleNonElmChild
+      );
+      parent.insertBefore(newDomNode, domNode);
+      if (newDomNode !== domNode2) {
+        parent.removeChild(domNode2);
+      }
+      i++;
+      j++;
+    } else if (prevNode.key === vNode2.key) {
+      // A node has been moved down.
+      treeWalker.currentNode = domNode;
+      newDomNode = _Morph_morphNode(
+        treeWalker,
+        vNode2,
+        sendToApp,
+        handleNonElmChild
+      );
+      parent.insertBefore(newDomNode, domNode2.nextSibling);
+      if (newDomNode !== domNode) {
+        parent.removeChild(domNode);
+      }
+      i2--;
+      j2--;
     } else {
       _Morph_morphChildrenKeyedMapped(
         parent,
@@ -624,6 +656,8 @@ function _Morph_morphChildrenKeyed(
       );
       return;
     }
+
+    treeWalker.currentNode = parent.childNodes[i];
   }
 
   treeWalker.currentNode = parent.childNodes[i2];

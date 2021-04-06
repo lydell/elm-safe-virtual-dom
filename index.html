@@ -71,6 +71,12 @@
         );
       };
 
+      new MutationObserver(console.log).observe(document.documentElement, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+      });
+
       customElements.define(
         "custom-element",
         class extends HTMLElement {
