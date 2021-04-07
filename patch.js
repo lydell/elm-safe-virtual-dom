@@ -285,12 +285,13 @@ function _Morph_morphNode(treeWalker, vNode, sendToApp, handleNonElmChild) {
 function _Morph_morphText(treeWalker, vNode) {
   var //
     text = vNode.a,
-    domNode = treeWalker !== undefined ? treeWalker.currentNode : undefined;
+    domNode = treeWalker !== undefined ? treeWalker.currentNode : undefined,
+    prevNode;
 
   if (
     domNode !== undefined &&
-    domNode.nodeType === 3 &&
-    _Morph_weakMap.has(domNode)
+    (prevNode = _Morph_weakMap.get(domNode)) !== undefined &&
+    prevNode.$ === vNode.$
   ) {
     if (domNode.data !== text) {
       domNode.data = text;
@@ -313,8 +314,7 @@ function _Morph_morphElement(
 ) {
   var //
     nodeName = vNode.c,
-    namespaceURI =
-      vNode.f === undefined ? "http://www.w3.org/1999/xhtml" : vNode.f,
+    namespaceURI = vNode.f,
     facts = vNode.d,
     children = vNode.e,
     domNode = treeWalker !== undefined ? treeWalker.currentNode : undefined,
@@ -322,10 +322,12 @@ function _Morph_morphElement(
 
   if (
     domNode !== undefined &&
-    domNode.nodeType === 1 &&
-    domNode.namespaceURI === namespaceURI &&
-    domNode.localName === nodeName &&
-    (prevNode = _Morph_weakMap.get(domNode)) !== undefined
+    (prevNode = _Morph_weakMap.get(domNode)) !== undefined &&
+    prevNode.$ === vNode.$ &&
+    // It’s slower to compare to `domNode.localName` and `domNode.namespaceURI`.
+    // Those are immutable so it’s fine to compare the vdom.
+    prevNode.c === nodeName &&
+    prevNode.f === namespaceURI
   ) {
     _Morph_morphFacts(domNode, prevNode, facts, sendToApp);
     if (treeWalker.firstChild() === null) {
@@ -344,7 +346,10 @@ function _Morph_morphElement(
     return domNode;
   }
 
-  domNode = _VirtualDom_doc.createElementNS(namespaceURI, nodeName);
+  domNode =
+    namespaceURI === undefined
+      ? _VirtualDom_doc.createElement(nodeName)
+      : _VirtualDom_doc.createElementNS(namespaceURI, nodeName);
   _Morph_weakMap.set(domNode, vNode);
 
   if (_VirtualDom_divertHrefToApp && nodeName === "a") {
@@ -784,7 +789,7 @@ function _Morph_morphCustom(treeWalker, vNode, sendToApp) {
     domNode !== undefined &&
     (prevNode = _Morph_weakMap.get(domNode)) !== undefined &&
     prevNode !== undefined &&
-    prevNode.$ === 3 &&
+    prevNode.$ === vNode.$ &&
     prevNode.h === render
   ) {
     patch = diff(prevNode.g, model);
@@ -1171,7 +1176,9 @@ function _Morph_virtualizeElement(
 
   vNode = A4(
     _VirtualDom_nodeNS,
-    element.namespaceURI,
+    element.namespaceURI === "http://www.w3.org/1999/xhtml"
+      ? undefined
+      : element.namespaceURI,
     element.localName,
     attrList,
     kidList
