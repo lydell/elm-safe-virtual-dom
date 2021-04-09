@@ -4,6 +4,7 @@
   _List_Nil,
   _Morph_vNodes,
   _Morph_keys,
+  _Morph_emptyFacts,
   _Morph_eventListeners,
   _VirtualDom_addClass,
   _VirtualDom_attribute,
@@ -89,6 +90,7 @@ exports.replacements = [
       "var _Morph_vNodes = _Morph_fakeWeakMap('__elmVNodes');",
       "var _Morph_keys = _Morph_fakeWeakMap('__elmKeys');",
       "var _Morph_eventListeners = _Morph_fakeWeakMap('__elmEventListeners');",
+      "var _Morph_emptyFacts = { a1: {}, a2: {}, a3: {}, a4: {} };",
       _Morph_fakeWeakMap,
       _Morph_defaultShouldVirtualize,
       _Morph_defaultHandleNonElmChild,
@@ -938,10 +940,7 @@ function _Morph_morphLazy(treeWalker, vNode, sendToApp, handleNonElmChild) {
 }
 
 function _Morph_morphFacts(domNode, prevNode, facts, sendToApp) {
-  var d =
-    prevNode === undefined
-      ? { a0: {}, a1: {}, a2: {}, a3: {}, a4: {} }
-      : prevNode.d;
+  var prevFacts = prevNode === undefined ? _Morph_emptyFacts : prevNode.d;
 
   // All of these are diffed against the previous virtual DOM rather than the
   // actual DOM in some cases. This means that:
@@ -957,15 +956,15 @@ function _Morph_morphFacts(domNode, prevNode, facts, sendToApp) {
 
   // It’s hard to find which styles have been changed. They are also normalized
   // when set, so `style[key] === domNode.style[key]` might _never_ be true!
-  _Morph_morphStyles(domNode, d.a1, facts.a1);
+  _Morph_morphStyles(domNode, prevFacts.a1, facts.a1);
 
   // Basically the same as styles, but also see the comment in this function.
-  _Morph_morphProperties(domNode, d.a2, facts.a2);
+  _Morph_morphProperties(domNode, prevFacts.a2, facts.a2);
 
   // There is a `.attributes` property, but `.type = "email"` adds a
   // `type="email"` attribute that we shouldn’t remove.
-  _Morph_morphAttributes(domNode, d.a3, facts.a3);
-  _Morph_morphNamespacedAttributes(domNode, d.a4, facts.a4);
+  _Morph_morphAttributes(domNode, prevFacts.a3, facts.a3);
+  _Morph_morphNamespacedAttributes(domNode, prevFacts.a4, facts.a4);
 }
 
 function _Morph_morphEvents(domNode, facts, sendToApp) {
