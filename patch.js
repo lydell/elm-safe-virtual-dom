@@ -750,7 +750,9 @@ function _Morph_morphChildrenKeyed(
     treeWalker.currentNode = parent.childNodes[i];
   }
 
-  treeWalker.currentNode = parent.childNodes[i2];
+  if (i2 >= 0) {
+    treeWalker.currentNode = parent.childNodes[i2];
+  }
 
   for (; i2 >= i; i2--) {
     domNode = treeWalker.currentNode;
