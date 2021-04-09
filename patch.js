@@ -1046,8 +1046,6 @@ function _Morph_morphStyles(domNode, previousStyles, styles) {
       }
     }
   }
-
-  return value !== undefined;
 }
 
 function _Morph_morphProperties(domNode, previousProperties, properties) {
@@ -1147,7 +1145,7 @@ function _VirtualDom_organizeFacts(factList) {
     value;
 
   for (
-    facts = { a0: {}, a1: {}, a2: {}, a3: {}, a4: {}, fns: {} };
+    facts = { a0: {}, a1: {}, a2: {}, a3: {}, a4: {} };
     factList.b;
     factList = factList.b // WHILE_CONS
   ) {
