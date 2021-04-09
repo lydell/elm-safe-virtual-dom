@@ -86,9 +86,10 @@ exports.replacements = [
     "var _VirtualDom_divertHrefToApp;",
     [
       "var _VirtualDom_divertHrefToApp;",
-      "var _Morph_vNodes = new WeakMap();",
-      "var _Morph_keys = new WeakMap();",
-      "var _Morph_eventListeners = new WeakMap();",
+      "var _Morph_vNodes = _Morph_fakeWeakMap('__elmVNodes');",
+      "var _Morph_keys = _Morph_fakeWeakMap('__elmKeys');",
+      "var _Morph_eventListeners = _Morph_fakeWeakMap('__elmEventListeners');",
+      _Morph_fakeWeakMap,
       _Morph_defaultShouldVirtualize,
       _Morph_defaultHandleNonElmChild,
       _Morph_morphRootNode,
@@ -188,6 +189,25 @@ exports.debuggerReplacements = [
   ],
   ["currPopout = nextPopout;", ""],
 ];
+
+// This is like a `WeakMap`, but faster (at the time of writing).
+// `x = fakeWeakMap('x')` can be replaced with `new WeakMap()` with no further changes.
+function _Morph_fakeWeakMap(property) {
+  return {
+    has: function has(key) {
+      return key[property] !== undefined;
+    },
+    get: function get(key) {
+      return key[property];
+    },
+    set: function set(key, value) {
+      key[property] = value;
+    },
+    delete: function delete_(key) {
+      delete key[property];
+    },
+  };
+}
 
 function _Morph_defaultShouldVirtualize(node) {
   switch (node.nodeName) {
