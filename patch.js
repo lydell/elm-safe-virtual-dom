@@ -90,7 +90,7 @@ exports.replacements = [
       "var _Morph_vNodes = _Morph_fakeWeakMap('__elmVNodes');",
       "var _Morph_keys = _Morph_fakeWeakMap('__elmKeys');",
       "var _Morph_eventListeners = _Morph_fakeWeakMap('__elmEventListeners');",
-      "var _Morph_emptyFacts = { a0: {}, a1: {}, a2: {}, a3: {}, a4: {} };",
+      "var _Morph_emptyFacts = { a0: undefined, a1: undefined, a2: undefined, a3: undefined, a4: undefined };",
       _Morph_fakeWeakMap,
       _Morph_defaultShouldVirtualize,
       _Morph_defaultHandleNonElmChild,
@@ -954,19 +954,33 @@ function _Morph_morphFacts(domNode, prevNode, facts, sendToApp) {
   // - Properties actually _do_ compare to the actual DOM too – see `_Morph_morphProperties`.
 
   // It’s not possible to inspect an elements event listeners.
-  _Morph_morphEvents(domNode, facts.a0, sendToApp);
+  if (facts.a0 !== undefined || prevFacts.a0 !== undefined) {
+    _Morph_morphEvents(domNode, facts.a0 || {}, sendToApp);
+  }
 
   // It’s hard to find which styles have been changed. They are also normalized
   // when set, so `style[key] === domNode.style[key]` might _never_ be true!
-  _Morph_morphStyles(domNode, prevFacts.a1, facts.a1);
+  if (facts.a1 !== undefined || prevFacts.a1 !== undefined) {
+    _Morph_morphStyles(domNode, prevFacts.a1 || {}, facts.a1 || {});
+  }
 
   // Basically the same as styles, but also see the comment in this function.
-  _Morph_morphProperties(domNode, prevFacts.a2, facts.a2);
+  if (facts.a2 !== undefined || prevFacts.a2 !== undefined) {
+    _Morph_morphProperties(domNode, prevFacts.a2 || {}, facts.a2 || {});
+  }
 
   // There is a `.attributes` property, but `.type = "email"` adds a
   // `type="email"` attribute that we shouldn’t remove.
-  _Morph_morphAttributes(domNode, prevFacts.a3, facts.a3);
-  _Morph_morphNamespacedAttributes(domNode, prevFacts.a4, facts.a4);
+  if (facts.a3 !== undefined || prevFacts.a3 !== undefined) {
+    _Morph_morphAttributes(domNode, prevFacts.a3 || {}, facts.a3 || {});
+  }
+  if (facts.a4 !== undefined || prevFacts.a4 !== undefined) {
+    _Morph_morphNamespacedAttributes(
+      domNode,
+      prevFacts.a4 || {},
+      facts.a4 || {}
+    );
+  }
 }
 
 function _Morph_morphEvents(domNode, events, sendToApp) {
@@ -1144,7 +1158,7 @@ function _VirtualDom_organizeFacts(factList) {
     value;
 
   for (
-    facts = { a0: {}, a1: {}, a2: {}, a3: {}, a4: {} };
+    facts = {};
     factList.b;
     factList = factList.b // WHILE_CONS
   ) {
@@ -1153,6 +1167,10 @@ function _VirtualDom_organizeFacts(factList) {
     key = entry.n;
     value = tag === "a2" ? _Json_unwrap(entry.o) : entry.o;
     subFacts = facts[tag];
+    if (subFacts === undefined) {
+      subFacts = {};
+      facts[tag] = subFacts;
+    }
     if (
       (tag === "a2" && key === "className") ||
       (tag === "a3" && key === "class")
