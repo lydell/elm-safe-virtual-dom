@@ -1158,7 +1158,13 @@ function _VirtualDom_organizeFacts(factList) {
     value;
 
   for (
-    facts = {};
+    facts = {
+      a0: undefined,
+      a1: undefined,
+      a2: undefined,
+      a3: undefined,
+      a4: undefined,
+    };
     factList.b;
     factList = factList.b // WHILE_CONS
   ) {
