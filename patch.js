@@ -90,7 +90,7 @@ exports.replacements = [
       "var _Morph_vNodes = _Morph_fakeWeakMap('__elmVNodes');",
       "var _Morph_keys = _Morph_fakeWeakMap('__elmKeys');",
       "var _Morph_eventListeners = _Morph_fakeWeakMap('__elmEventListeners');",
-      "var _Morph_emptyFacts = { a1: {}, a2: {}, a3: {}, a4: {} };",
+      "var _Morph_emptyFacts = { a0: {}, a1: {}, a2: {}, a3: {}, a4: {} };",
       _Morph_fakeWeakMap,
       _Morph_defaultShouldVirtualize,
       _Morph_defaultHandleNonElmChild,
@@ -954,7 +954,7 @@ function _Morph_morphFacts(domNode, prevNode, facts, sendToApp) {
   // - Properties actually _do_ compare to the actual DOM too – see `_Morph_morphProperties`.
 
   // It’s not possible to inspect an elements event listeners.
-  _Morph_morphEvents(domNode, facts, sendToApp);
+  _Morph_morphEvents(domNode, facts.a0, sendToApp);
 
   // It’s hard to find which styles have been changed. They are also normalized
   // when set, so `style[key] === domNode.style[key]` might _never_ be true!
@@ -969,9 +969,8 @@ function _Morph_morphFacts(domNode, prevNode, facts, sendToApp) {
   _Morph_morphNamespacedAttributes(domNode, prevFacts.a4, facts.a4);
 }
 
-function _Morph_morphEvents(domNode, facts, sendToApp) {
+function _Morph_morphEvents(domNode, events, sendToApp) {
   var //
-    events = facts.a0,
     callbacks = _Morph_eventListeners.get(domNode),
     callback,
     eventName,
