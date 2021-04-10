@@ -91,7 +91,9 @@
       );
 
       if (Elm.Main) {
-        Elm.Main.init();
+        Elm.Main.init({
+          virtualize: (node) => node === document.body,
+        });
       } else if (Elm.Sandbox) {
         Elm.Sandbox.init({ node: document.getElementById("main") });
       } else if (Elm.KeyList) {
