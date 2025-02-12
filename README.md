@@ -46,7 +46,9 @@ As close as drop-in it can be. You need to keep two things in mind:
 
 ## How to test
 
-TODO
+1. Remove virtual DOM related hacks and workarounds in your code base (they shouldn’t be needed anymore).
+2. Read [Is it a drop-in replacement?](#is-it-a-drop-in-replacement) above.
+3. Download [lydell.bash](./lydell.bash) and follow the instructions inside.
 
 ## Performance
 
