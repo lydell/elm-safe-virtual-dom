@@ -20,6 +20,18 @@ This repo:
 - Fixes a _lot_ of other issues.
 - Makes hydrating of server-side rendered HTML usable (good for elm-pages).
 
+## Is it a drop-in replacement?
+
+As close as drop-in it can be. You need to keep two things in mind:
+
+1. With my forks, Elm no longer “clears“ the node you mount the Elm application on. More specifically, it only “virtualizes” elements with the `data-elm` attribute (instead of _all_ child elements), and lets any other elements be. This results in:
+
+   - If you have an element like `<p>Looks like JavaScript failed to run.</p>` and expect Elm to remove it, that won’t happen now. To fix, you can put `data-elm` on it: `<p data-elm>`.
+   - If you use CSS selectors like `body > :first-child` or `body > :last-child`, they might not apply, since your `<script>` tags in `<body>` might still be around.
+   - If you do server side rendering and expect Elm to hydrate/virtualize/take charge over the server side rendered HTML, you need to make sure that all elements (except the root element) has `data-elm`. If you create the HTML with Elm (such as with elm-pages), you’ll get this automatically when you use my forks. But if you create elements some other way, make sure they have `data-elm`.
+
+2. [Hyrum’s Law](https://www.hyrumslaw.com/). The DOM is full of complex details. Even a small fix could accidentally break something for you.
+
 ## Status
 
 - [x] Proof of concept.
