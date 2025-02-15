@@ -28,9 +28,9 @@ This repo:
 
 ### Changes
 
-- Doesn’t break because of browser extensions or third party scripts.
+- Doesn’t break because of browser extensions or third party scripts. [elm/html#44](https://github.com/elm/html/issues/44) [elm/browser#121](https://github.com/elm/browser/issues/121) [elm/browser#66](https://github.com/elm/browser/issues/66) [elm/virtual-dom#147](https://github.com/elm/virtual-dom/issues/147)
 - Supports Google Translate, and other web page translators (Firefox, Safari).
-- Fixes the infamous `Html.map` bug.
+- Fixes the infamous `Html.map` bug. [elm/virtual-dom#105](https://github.com/elm/virtual-dom/issues/105) [elm/virtual-dom#162](https://github.com/elm/virtual-dom/issues/162) [elm/virtual-dom#171](https://github.com/elm/virtual-dom/issues/171) [elm/virtual-dom#166 (PR)](https://github.com/elm/virtual-dom/pull/166) [elm/html#160](https://github.com/elm/html/issues/160) [elm/compiler#2069](https://github.com/elm/compiler/issues/2069)
 - Fixes a _lot_ of other issues.
 - Makes hydrating of server-side rendered HTML usable (good for elm-pages).
 
@@ -479,13 +479,13 @@ The main changes are in my elm/virtual-dom fork. The changes in elm/html and elm
 
 Changes:
 
-- A new algorithm for pairing virtual DOM nodes with the corresponding real DOM node, that should be robust against browser extensions and third-party scripts. It is in the code for the old algorithm where most crashes happen.
+- A new algorithm for pairing virtual DOM nodes with the corresponding real DOM node, that should be robust against browser extensions and third-party scripts. It is in the code for the old algorithm where most crashes happen. [elm/html#44](https://github.com/elm/html/issues/44) [elm/browser#121](https://github.com/elm/browser/issues/121) [elm/browser#66](https://github.com/elm/browser/issues/66) [elm/virtual-dom#147](https://github.com/elm/virtual-dom/issues/147)
 - Support for the page being translated, for example Google Translate. This requires the above change (being robust), and then a little bit of extra code to make sure that translated text isn’t left behind on the page, and so that translated text that should change actually updates.
-- The `Html.map` bug where messages of the wrong type can appear in `update` functions is fixed, by completely changing how `Html.map` works. The old code was incredibly difficult to understand, but could theoretically skip more work in some cases. The new code is instead very simple, leaving little room for errors.
-- Improved `Html.Keyed`. The algorithm is slightly smarter without losing performance, and uses the new `Element.prototype.moveBefore` API, if available, which allows moving an element on the page without “resetting” it (scroll position, animations, loaded state for iframes and video, etc.).
+- The `Html.map` bug where messages of the wrong type can appear in `update` functions is fixed, by completely changing how `Html.map` works. The old code was incredibly difficult to understand, but could theoretically skip more work in some cases. The new code is instead very simple, leaving little room for errors. [elm/virtual-dom#105](https://github.com/elm/virtual-dom/issues/105) [elm/virtual-dom#162](https://github.com/elm/virtual-dom/issues/162) [elm/virtual-dom#171](https://github.com/elm/virtual-dom/issues/171) [elm/virtual-dom#166 (PR)](https://github.com/elm/virtual-dom/pull/166) [elm/html#160](https://github.com/elm/html/issues/160) [elm/compiler#2069](https://github.com/elm/compiler/issues/2069)
+- Improved `Html.Keyed`. The algorithm is slightly smarter without losing performance, and uses the new `Element.prototype.moveBefore` API, if available, which allows moving an element on the page without “resetting” it (scroll position, animations, loaded state for iframes and video, etc.). [elm/virtual-dom#175](https://github.com/elm/virtual-dom/issues/175) [elm/virtual-dom#178](https://github.com/elm/virtual-dom/issues/178) [elm/virtual-dom#183](https://github.com/elm/virtual-dom/issues/183)
 - “Virtualization” is now completed, making it usable in practice, for example for elm-pages. This means that server-side rendered pages no longer have to redraw the whole page when Elm initializes.
-- CSS custom properties, like `--primary-color`, can now be set with `Html.Attributes.style "--primary-color" "salmon"`.
-- `Svg.Attributes.xlinkHref` no longer mutates the DOM on every single render, which caused flickering in Safari sometimes.
+- CSS custom properties, like `--primary-color`, can now be set with `Html.Attributes.style "--primary-color" "salmon"`. [elm/html#177](https://github.com/elm/html/issues/177)
+- `Svg.Attributes.xlinkHref` no longer mutates the DOM on every single render, which caused flickering in Safari sometimes. [elm/virtual-dom#62](https://github.com/elm/virtual-dom/issues/62)
 
 <details>
 
@@ -852,8 +852,8 @@ href url =
 
 In short, attributes are preferred because:
 
-1. Attributes can be removed, while properties often cannot.
-2. “Virtualization” is way easier when most `Html.Attributes` functions are attributes.
+1. Attributes can be removed, while properties often cannot. [elm/html#228](https://github.com/elm/html/issues/228) [elm/html#148](https://github.com/elm/html/issues/148) [elm/virtual-dom#122](https://github.com/elm/virtual-dom/issues/122) [elm/virtual-dom#169](https://github.com/elm/virtual-dom/issues/169)
+2. “Virtualization” is way easier when most `Html.Attributes` functions are attributes. [elm/virtual-dom#144](https://github.com/elm/virtual-dom/issues/144)
 3. Some properties are read-only and therefore throw errors if you try to set them.
 4. Attributes are easier to diff.
 
@@ -871,7 +871,7 @@ My fork of elm/browser is a mixed bag of small changes. I intend to make separat
 
 - You might have noticed that when Elm’s virtual DOM crashes, you get an error in the browser console many times per second. This is because Elm generally draws on the next animation frame using `requestAnimationFrame`, and if it crashes during rendering it gets stuck in an infinite `requestAnimationFrame` loop. That’s really annoying. When fixing changing the code to not get caught in a loop if there is an exception, I also noticed that the whole `requestAnimationFrame` was a bit off. Basically, if you also subscribe to `Browser.Events.onAnimationFrame`, you could end up with `update` and `view` being 1 frame out of sync, and some frames could be skipped. I made a [demo showing these animation frame oddities](https://lydell.github.io/elm-animation-frame-oddities/). My fork fixes that, except the demo cases where the animation frames come via a port – I don’t think that is solvable.
 
-- Finally, there’s a bug where clicks on `<a>` elements _without_ `href` still end up producing a `LinkClicked` messages, even though such elements shouldn’t be clickable. I’ve fixed that. (But note that this fix doesn’t work during development with elm-watch – see the [Compatibility with tooling](#compatibility-with-tooling) section.)
+- Finally, there’s a bug where clicks on `<a>` elements _without_ `href` still end up producing a `LinkClicked` messages, even though such elements shouldn’t be clickable. I’ve fixed that. (But note that this fix doesn’t work during development with elm-watch – see the [Compatibility with tooling](#compatibility-with-tooling) section.) [elm/browser#34](https://github.com/elm/browser/issues/34) [elm/browser#55](https://github.com/elm/browser/issues/55) [elm/browser#64](https://github.com/elm/browser/issues/64)
 
 ### Legacy
 
