@@ -318,7 +318,7 @@ TL;DR: Any version should work.
 
 For hot reloading purposes, elm-watch replaces some functions that I’ve also changed in my forks, losing the changes made in my forks. This affects two things:
 
-- When virtualizing `<a>` elements, they won’t get their click listener, resulting in them causing full page reloads instead of being routed by Elm. I don’t think that many people use both server-side rendering and elm-watch though. And – in elm-watch 1.1.4+, 1.2.2+ and 2.0.0-beta.6+, I’ve actually added in the missing pieces in elm-watch so that this _will_ work. A caveat here is that if you install my fork of the virtual-dom package, but _not_ my fork of the browser package, you’ll get my forked browser experience during development with elm-watch anyway, but _not_ in production builds. Having something work during development but not in production sucks, but I don’t see any reason for someone not installing all three of my forks.
+- When virtualizing `<a>` elements, they won’t get their click listener, resulting in them causing full page reloads instead of being routed by Elm. I don’t think that many people use both server-side rendering and elm-watch though. And in elm-watch 1.1.4+, 1.2.2+ and 2.0.0-beta.6+, I’ve actually added in the missing pieces so that this _will_ work. A caveat here is that if you install my fork of the virtual-dom package, but _not_ my fork of the browser package, you’ll get my forked browser experience during development with elm-watch anyway, but _not_ in production builds. Having something work during development but not in production sucks, but I don’t see any reason for someone not installing all three of my forks.
 - When clicking on an `<a>` element _without_ the `href` attribute, they’ll be routed by Elm, missing out on my fix where nothing should happen instead. I don’t have a solution to this problem yet. I _could_ include this fix for everyone, but I think that would be misleading (even worse than the above caveat). Production-only bugs suck.
 
 </details>
@@ -341,7 +341,7 @@ TL;DR: Any version should work, but to get the full experience you need [pull re
 
 Without the two pull requests mentioned above, the following caveats apply (read the [No longer empties the mount element](#no-longer-empties-the-mount-element) section for why):
 
-- elm-pages 3.0.20 renders extra whitespace nodes in `<body>`, causing the first diff with `view` to be off, leading to basically the entire page being re-rendered. That’s not worse than without may forks though: Without my forks your elm-pages app re-renders the entire page anyway due to `Lazy` and `Keyed` nodes (one of the things fixed in my forks).
+- elm-pages 3.0.20 renders extra whitespace nodes in `<body>`, causing the first diff with `view` to be off, leading to basically the entire page being re-rendered. That’s not worse than without my forks though: Without my forks your elm-pages app re-renders the entire page anyway due to `Lazy` and `Keyed` nodes (one of the things fixed in my forks).
 - You’ll end up with an extra `<div data-url>` element in `<body>`. I’m not sure what that affects.
 - You’ll end up with an extra `<div aria-live>` element in `<body>`. That should be fine, since it will stay unchanged. `aria-live` only announces changes to the DOM.
 
@@ -442,7 +442,7 @@ There are three main ways to provide feedback:
 2. Open an issue in this repo about a successful (problem free) test. Mention what you tested and how it went.
 3. Chat in the `#elm-virtual-dom` channel on the [Incremental Elm Discord](https://incrementalelm.com/chat/).
 
-If you encounter a bug, it is very helpful if you could:
+If you encounter a bug, it would be very helpful if you could:
 
 1. Save any stack traces and error messages you see, and take a screenshot.
 
@@ -515,7 +515,7 @@ type Html msg
 
 (Hand-waving away that the `a` and `b` type variables aren’t declared.)
 
-A first important thing to realize is that `Html.map` does not “do” anything straight away. It is represented as another node in the tree, and your mapping function is applied later. A `Map` node is not associated with any DOM node – it’s a wrapper around another node which in turn might be.
+The first important thing to realize is that `Html.map` does not “do” anything straight away. It is represented as another node in the tree, and your mapping function is applied later. A `Map` node is not associated with any DOM node – it’s a wrapper around another node which in turn might be.
 
 `Html.Lazy` also creates new nodes wrapping other nodes. It isn’t associated with a DOM node either.
 
@@ -584,11 +584,12 @@ view model =
         ]
 ```
 
-In a more realistic example, there’d be something next to the edit icons as well, and they’d be buttons that edit those things, but lets keep it simple. What happens when you refer to `editIcon` multiple times? Well, the above will be represented roughly like this in JavaScript:
+In a more realistic example, there’d be something next to the edit icons as well, and they’d be buttons that edit those things, but let's keep it simple. What happens when you refer to `editIcon` multiple times? Well, the above will be represented roughly like this in JavaScript:
 
 ```js
 var editIcon = {
   $: "Element",
+  tag: "img",
   attributes: [{ name: "src", value: "/edit.svg" }],
   children: [],
   domNode: undefined,
@@ -597,6 +598,7 @@ var editIcon = {
 var view = function (model) {
   return {
     $: "Element",
+    tag: "div",
     attributes: [],
     children: [editIcon, editIcon],
     domNode: undefined,
@@ -604,7 +606,7 @@ var view = function (model) {
 };
 ```
 
-`editIcon` is represented by a JavaScript object. In `view` we point to it twice. The `children` array in `view` contains the same `editIcon` object twice. And they are not just _equal,_ the are _the same reference._
+`editIcon` is represented by a JavaScript object. In `view` we point to it twice. The `children` array in `view` contains the same `editIcon` object twice. And they are not just _equal,_ they are _the same reference._
 
 But in the actual DOM, they need one unique DOM node each. The exact same DOM node cannot be inserted at multiple places in the DOM. If you try to insert the same DOM node twice, it _moves_ the DOM node there.
 
@@ -613,6 +615,7 @@ That’s a problem because when we render the first `editIcon` for the first tim
 ```js
 var editIcon = {
   $: "Element",
+  tag: "img",
   attributes: [{ name: "src", value: "/edit.svg" }],
   children: [],
   domNode: img, // Reference to the `img` DOM node we just made.
@@ -626,6 +629,7 @@ The way I solved this is by having an _array_ of DOM nodes on the virtual DOM no
 ```js
 var editIcon = {
   $: "Element",
+  tag: "img",
   attributes: [{ name: "src", value: "/edit.svg" }],
   children: [],
   domNodes: [],
@@ -637,6 +641,7 @@ And after the first render it would become:
 ```js
 var editIcon = {
   $: "Element",
+  tag: "img",
   attributes: [{ name: "src", value: "/edit.svg" }],
   children: [],
   domNodes: [img1, img2], // References to the two DOM nodes on the page.
@@ -648,6 +653,7 @@ This `editIcon` constant has one more quirk to it. While most virtual DOM nodes 
 ```js
 var editIcon = {
   $: "Element",
+  tag: "img",
   attributes: [{ name: "src", value: "/edit.svg" }],
   children: [],
 
@@ -662,7 +668,7 @@ var editIcon = {
 };
 ```
 
-So, we keep track of both the old DOM nodes and the new DOM nodes, and have an index `i` which points to how far into `oldDomNodes` we have gotten. `renderedAt` is used to “reset” between renders. At the end of a render, `i` will be at least `1` for all virtual DOM nodes, and `newDomNodes` will contain at least one DOM node. We _could_ then go through the entire virtual DOM again, to reset `i` back to 0, move `newDomNodes` to `oldDomNodes`, and set `newDomNodes` to a new empty array. But that would require us to traverse the whole thing one time extra. Instead, we increment a global counter right before render. If `renderedAt !== globalRenderCount`, it means that we should reset and set `renderedAt = globalRenderCount` before incrementing `i` etc.
+So, we keep track of both the old DOM nodes and the new DOM nodes, and have an index `i` which points to how far into `oldDomNodes` we have gotten. `renderedAt` is used to “reset” between renders. At the end of a render, `i` will be at least `1` for all virtual DOM nodes, and `newDomNodes` will contain at least one DOM node. We _could_ then go through the entire virtual DOM again, to reset `i` back to 0, move `newDomNodes` to `oldDomNodes`, and set `newDomNodes` to a new empty array. But that would require us to traverse the whole thing one additional time. Instead, we increment a global counter right before render. If `renderedAt !== globalRenderCount`, it means that we should reset and set `renderedAt = globalRenderCount` before incrementing `i` etc.
 
 This design imposes a rule: On each render, we always have to recurse through the _entire_ old virtual DOM, to “discover” all uses of each virtual DOM node, and increase that `i` counter each time. This is a difference compared to the original elm/virtual-dom package, that is worth mentioning from a performance perspective:
 
@@ -670,11 +676,11 @@ This design imposes a rule: On each render, we always have to recurse through th
 
 - When a virtual DOM node is only present in the _old_ virtual DOM, it means that it was removed. The original elm/virtual-dom then has no need to recurse through all the children of that virtual DOM node. My fork still needs to do that though, to increment the `i` counter of every virtual DOM node inside the removed one, in case one of them is used again later. Note that this doesn’t use the regular diffing recursive function, it uses a special function that recurses the virtual DOM just for this use case as quickly as possible.
 
-- When a virtual DOM node is only present in the _new_ virtual DOM, it means that it was inserted. Both implementations the need to recurse through all the children of the new virtual DOM node, to render all of the elements, of course. No change there.
+- When a virtual DOM node is only present in the _new_ virtual DOM, it means that it was inserted. Both implementations then need to recurse through all the children of the new virtual DOM node, to render all of the elements, of course. No change there.
 
 - When two virtual DOM nodes are for different elements (one is a `<div>`, the other is a `<p>`), both implementations bail out, by removing the old DOM node completely and then rendering the new one fresh. This is just like a removal followed by an insertion, so my fork needs to recurse through the old virtual DOM node here too, while the original elm/virtual-dom does not need that.
 
-- Finally, lazy nodes. The first thing `lazy` does is that your Elm function won’t be called unless the arguments change. The second thing is the virtual DOM diffing. If the arguments haven’t changed, then we’ll use the same virtual DOM as last time, which then by definition is unchanged. The original elm/virtual-dom then doesn’t need to look through that virtual DOM node at all, it you can just move on to the next. My fork still needs to recurse through it, for two reasons. The first one is similar to node removals: To increment the `i` counter in case a virtual DOM node used inside the lazy node is used again later. The second reason is due to `Html.map` – see the section about `Html.map` why. Just like when recursing removed virtual DOM nodes, recursing lazy nodes also has a fast path function that only increments the `i` counter and makes sure event listeners are up-to-date. This means that `lazy` is slightly less lazy with my fork.
+- Finally, lazy nodes. The first thing `lazy` does is that your Elm function won’t be called unless the arguments change. The second thing is the virtual DOM diffing. If the arguments haven’t changed, then we’ll use the same virtual DOM as last time, which then by definition is unchanged. The original elm/virtual-dom then doesn’t need to look through that virtual DOM node at all, it you can just move on to the next. My fork still needs to recurse through it, for two reasons. The first one is similar to node removals: To increment the `i` counter in case a virtual DOM node used inside the lazy node is used again later. The second reason is due to `Html.map` – see the section about `Html.map`. Just like when recursing removed virtual DOM nodes, recursing lazy nodes also has a fast path function that only increments the `i` counter and makes sure event listeners are up-to-date. This means that `lazy` is slightly less lazy with my fork.
 
 </details>
 
@@ -706,7 +712,7 @@ For these reasons, my fork detects page translators and tries to cooperate with 
 
 If a page translator _was_ detected, tell the parent. It will then go through its children again, both virtual DOM children and actual DOM children. It removes text node DOM children and replaces them with new ones. It also removes `<font>` tags not created by Elm (they are most likely created by Google Translate). While doing this, it makes sure that all the child elements are in the correct order.
 
-The thing here is that if we detect that a text node has been removed, it most likely means that it has been replaced with a translated version. But we don’t know _what_ DOM node or nodes on the page that replaced it, only that it or they should be _somewhere_ in the parent element. So the only thing we can do is to tell the parent element to redo all of its text. That also good for the word order thing: It’s better if the page translator detects a full sentence or paragraph being changed than just a word or two. There’s a chance that the parent element contains the full sentence or paragraph, but of course no guarantee. Once the page translator detects the changes, it will re-translate all of it.
+The thing here is that if we detect that a text node has been removed, it most likely means that it has been replaced with a translated version. But we don’t know _what_ DOM node or nodes on the page that replaced it, only that it or they should be _somewhere_ in the parent element. So the only thing we can do is to tell the parent element to redo all of its text. That is also good for the word order thing: It’s better if the page translator detects a full sentence or paragraph being changed than just a word or two. There’s a chance that the parent element contains the full sentence or paragraph, but of course no guarantee. Once the page translator detects the changes, it will re-translate all of it.
 
 This algorithm is somewhat simple and fast, but it’s not perfect due to the word order thing. There might be some leftover or misplaced text after an update. But page translators aren’t perfect in the first place, so I don’t think users of them will expect perfection. They just want a page that they can understand and that doesn’t crash.
 
@@ -744,13 +750,13 @@ view model =
 
 `Html.Events.onClick ButtonClicked` is also easy to diff. `ButtonClicked` is just a value, so it can be compared, to know if the event listener needs to change.
 
-`Html.Events.onInput GotSearchInput` then? `GotSearchInput` is a _function._ Functions cannot be compared in general. But this happens to be the _same function reference_ every time. So we can check for `===` reference equality in JavaScript to know if the event listener needs to change.
+What about `Html.Events.onInput GotSearchInput` then? `GotSearchInput` is a _function._ Functions cannot be compared in general. But this happens to be the _same function reference_ every time. So we can check for `===` reference equality in JavaScript to know if the event listener needs to change.
 
-`Html.Events.onInput (GotCommentInput i)` is problematic, though. It returns a _new_ function every time due to the partial application. (A lambda function would also be a _new_ function every time.) We simply can’t know when it changes, so the event listener needs to change every time.
+`Html.Events.onInput (GotCommentInput i)` is problematic, though. It returns a _new_ function every time due to the partial application. (A literal lambda function would also be a _new_ function every time.) We simply can’t know when it changes, so the event listener needs to change every time.
 
 (And, on the lowest level, an event handler is just a pair of an event name and a _decoder_ (that results in a message). So when the original elm/virtual-dom compares your event handlers, it actually has to compare _decoders._ elm/json contains a hidden `_Json_equality` only for this reason. My fork does not need that function.)
 
-Then we need to introduce `Html.map` to the mix as well. The original elm/virtual-dom assigns `domNode.elm_event_node_ref = eventNode`, where `eventNode` is an object with a clever system of references, where different layers of `Html.map` can mutate chains of objects that eventually results in that when an event is triggered, all mapping functions can be applied. This system is pretty difficult to grasp, and can only be fully understood for a couple of seconds at a time. It also hides the infamous `Html.map` bug. All in all, this system avoids (at least theoretically) updating event listeners on every render. It also avoids having to recurse into lazy virtual nodes when they haven’t changed.
+Then we need to introduce `Html.map` to the mix as well. The original elm/virtual-dom assigns `domNode.elm_event_node_ref = eventNode`, where `eventNode` is an object with a clever system of references, where different layers of `Html.map` can mutate chains of objects that eventually results in that—when an event is triggered—all mapping functions can be applied. This system is pretty difficult to grasp, and can only be fully understood for a couple of seconds at a time. It also hides the infamous `Html.map` bug. All in all, this system avoids (at least theoretically) updating event listeners on every render. It also avoids having to recurse into lazy virtual nodes when they haven’t changed.
 
 My fork takes a much simpler approach. As mentioned in the “New DOM node pairing algorithm” section, my fork needs to recurse into _all_ virtual DOM nodes anyway, even into lazy nodes. And the diffing of event decoders often doesn’t work anyway, due to passing extra data in messages (that feels pretty common). So my fork simply updates all event listeners every render.
 
