@@ -790,6 +790,8 @@ function render(virtualDomNode, sendToApp) {
 
 </details>
 
+<details>
+
 <summary>Html.Keyed</summary>
 
 `Html.Keyed` in the original elm/virtual-dom is pretty simplistic. I basically operates on a “one lookahead” principle. It goes through the children of the old and new virtual DOM node pairwise. If the keys match, diff them and move on. Otherwise, look ahead one child on both sides and compare all four virtual DOM nodes, to find insertions, removals and swaps. If nothing still matches, degrade to the naive method of moving every child in place (which can lead to moving 10 children up instead of 2 down, for example).
