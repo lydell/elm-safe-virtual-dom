@@ -375,6 +375,16 @@ Oh, and one more thing. Don’t make a _keyed_ elm-portal (like `Html.Keyed.node
 
 </details>
 
+<details>
+
+<summary>elm-optimize-level-2</summary>
+
+TL;DR: I don’t know.
+
+I have never used elm-optimize-level-2. But I suspect that [supportArraysForHtml](https://github.com/mdgriffith/elm-optimize-level-2/pull/108) might conflict with the changes in my fork.
+
+</details>
+
 ### lydell.bash
 
 Download [lydell.bash](./lydell.bash) from this repo and follow the instructions inside.
