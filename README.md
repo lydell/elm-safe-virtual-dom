@@ -470,11 +470,12 @@ The main changes are in my elm/virtual-dom fork. The changes in elm/html and elm
 Changes:
 
 - A new algorithm for pairing virtual DOM nodes with the corresponding real DOM node, that should be robust against browser extensions and third-party scripts. It is in the code for the old algorithm where most crashes happen.
-- “Virtualization” is now completed, making it usable in practice, for example for elm-pages. This means that server-side rendered pages no longer have to redraw the whole page when Elm initializes.
+- Support for the page being translated, for example Google Translate. This requires the above change (being robust), and then a little bit of extra code to make sure that translated text isn’t left behind on the page, and so that translated text that should change actually updates.
 - The `Html.map` bug where messages of the wrong type can appear in `update` functions is fixed, by completely changing how `Html.map` works. The old code was incredibly difficult to understand, but could theoretically skip more work in some cases. The new code is instead very simple, leaving little room for errors.
+- Improved `Html.Keyed`. The algorithm is slightly smarter without losing performance, and uses the new `Element.prototype.moveBefore` API, if available, which allows moving an element on the page without “resetting” it (scroll position, animations, loaded state for iframes and video, etc.).
+- “Virtualization” is now completed, making it usable in practice, for example for elm-pages. This means that server-side rendered pages no longer have to redraw the whole page when Elm initializes.
 - CSS custom properties, like `--primary-color`, can now be set with `Html.Attributes.style "--primary-color" "salmon"`.
 - `Svg.Attributes.xlinkHref` no longer mutates the DOM on every single render, which caused flickering in Safari sometimes.
-- TODO: Look through for more little fixes to add to this list.
 
 <details>
 
@@ -632,7 +633,158 @@ var editIcon = {
 };
 ```
 
-TODO the rest of the story.
+This `editIcon` constant has one more quirk to it. While most virtual DOM nodes are created during each `view` and then garbage collected, the `editIcon` constant is … constant. It’s the same virtual DOM node reference, render after render. That means that when we diff, `oldVirtualDomNode === newVirtualDomNode`. The old and new virtual DOM node are … the exact same object. Which means that the `domNodes` array is the same array too – mutating one mutates the other. For this reason, I add more than just `domNodes` to the virtual nodes:
+
+```js
+var editIcon = {
+  $: "Element",
+  attributes: [{ name: "src", value: "/edit.svg" }],
+  children: [],
+
+  // We only read from `x.oldDomNodes`. Uses `i`. Is set to `newDomNodes` at each render.
+  oldDomNodes: [],
+  // This is set to a new, empty array on each render. We push to `y.newDomNodes`.
+  newDomNodes: [],
+  // We have a global render counter. By comparing it with this number, we know if we have encountered a virtual DOM node for the first time during a render.
+  renderedAt: 0,
+  // The index of the next DOM node in `oldDomNodes` to use.
+  i: 0,
+};
+```
+
+So, we keep track of both the old DOM nodes and the new DOM nodes, and have an index `i` which points to how far into `oldDomNodes` we have gotten. `renderedAt` is used to “reset” between renders. At the end of a render, `i` will be at least `1` for all virtual DOM nodes, and `newDomNodes` will contain at least one DOM node. We _could_ then go through the entire virtual DOM again, to reset `i` back to 0, move `newDomNodes` to `oldDomNodes`, and set `newDomNodes` to a new empty array. But that would require us to traverse the whole thing one time extra. Instead, we increment a global counter right before render. If `renderedAt !== globalRenderCount`, it means that we should reset and set `renderedAt = globalRenderCount` before incrementing `i` etc.
+
+This design imposes a rule: On each render, we always have to recurse through the _entire_ old virtual DOM, to “discover” all uses of each virtual DOM node, and increase that `i` counter each time. This is a difference compared to the original elm/virtual-dom package, that is worth mentioning from a performance perspective:
+
+- A common case is that both the old and new virtual DOM are _very_ similar. There might be just a single change in one place, maybe just a text change or an attribute change. In this case, the diffing algorithm will naturally visit _every_ virtual DOM node to find this.
+
+- When a virtual DOM node is only present in the _old_ virtual DOM, it means that it was removed. The original elm/virtual-dom then has no need to recurse through all the children of that virtual DOM node. My fork still needs to do that though, to increment the `i` counter of every virtual DOM node inside the removed one, in case one of them is used again later. Note that this doesn’t use the regular diffing recursive function, it uses a special function that recurses the virtual DOM just for this use case as quickly as possible.
+
+- When a virtual DOM node is only present in the _new_ virtual DOM, it means that it was inserted. Both implementations the need to recurse through all the children of the new virtual DOM node, to render all of the elements, of course. No change there.
+
+- When two virtual DOM nodes are for different elements (one is a `<div>`, the other is a `<p>`), both implementations bail out, by removing the old DOM node completely and then rendering the new one fresh. This is just like a removal followed by an insertion, so my fork needs to recurse through the old virtual DOM node here too, while the original elm/virtual-dom does not need that.
+
+- Finally, lazy nodes. The first thing `lazy` does is that your Elm function won’t be called unless the arguments change. The second thing is the virtual DOM diffing. If the arguments haven’t changed, then we’ll use the same virtual DOM as last time, which then by definition is unchanged. The original elm/virtual-dom then doesn’t need to look through that virtual DOM node at all, it you can just move on to the next. My fork still needs to recurse through it, for two reasons. The first one is similar to node removals: To increment the `i` counter in case a virtual DOM node used inside the lazy node is used again later. The second reason is due to `Html.map` – see the section about `Html.map` why. Just like when recursing removed virtual DOM nodes, recursing lazy nodes also has a fast path function that only increments the `i` counter and makes sure event listeners are up-to-date. This means that `lazy` is slightly less lazy with my fork.
+
+</details>
+
+<details>
+
+<summary>Page translation support (Google Translate)</summary>
+
+Here’s how page translation tools work:
+
+- Google Translate (built into Chrome): It removes all text nodes, and replaces them with `<font>` tags with new, translated text nodes inside.
+- Firefox’s translator: It mutates the text of existing text nodes to translate them.
+- Safari’s translator: It replaces all text nodes with new, translated text nodes.
+
+All three of them can also introduce new text nodes, and even new elements, if the target language has a different word order. For example, `<em>I went</em> to school.` can be translated to `<em>Ich</em> bin zur Schule <em>gegangen</em>.` Due to different word order, another `<em>` element had to be introduced to preserve the text formatting.
+
+All three of them also listen for changes to the page and translate new text as it arrives on the page.
+
+In my fork, the general behavior is to leave unknown elements alone, and to just update the reference to the DOM node that we stored on the virtual DOM node. That works fine also for page translators – until translated text needs to update. There are two problems:
+
+- The text node that we’re mutating the text of might not even be on the page anymore (Google Translate and Safari). But the intention of the page translator was not to remove anything – the intention was to translate everything on the page.
+- We might leave a lot of stray text behind everywhere as the page changes, resulting in a very confusing page.
+
+For these reasons, my fork detects page translators and tries to cooperate with them. The detection works like this:
+
+1. Diff two virtual DOM text nodes. Stop if the text hasn’t changed.
+2. Since the text has changed, the DOM text node needs to be updated. But before doing that, check if the DOM node text is equal to the _old_ virtual DOM node. If not, we have detected Firefox’s translator – then stop.
+3. If the DOM node text was unchanged, check if it has a parent node. If not, we have detected Google Translate or Safari’s translator – then stop. (When they remove the original text nodes, they no longer have a parent node.)
+4. If the DOM node had a parent node, it is probably still on the page. Update the DOM text node. No page translator.
+
+If a page translator _was_ detected, tell the parent. It will then go through its children again, both virtual DOM children and actual DOM children. It removes text node DOM children and replaces them with new ones. It also removes `<font>` tags not created by Elm (they are most likely created by Google Translate). While doing this, it makes sure that all the child elements are in the correct order.
+
+The thing here is that if we detect that a text node has been removed, it most likely means that it has been replaced with a translated version. But we don’t know _what_ DOM node or nodes on the page that replaced it, only that it or they should be _somewhere_ in the parent element. So the only thing we can do is to tell the parent element to redo all of its text. That also good for the word order thing: It’s better if the page translator detects a full sentence or paragraph being changed than just a word or two. There’s a chance that the parent element contains the full sentence or paragraph, but of course no guarantee. Once the page translator detects the changes, it will re-translate all of it.
+
+This algorithm is somewhat simple and fast, but it’s not perfect due to the word order thing. There might be some leftover or misplaced text after an update. But page translators aren’t perfect in the first place, so I don’t think users of them will expect perfection. They just want a page that they can understand and that doesn’t crash.
+
+</details>
+
+<details>
+
+<summary>Event listeners and Html.map</summary>
+
+Consider the following code:
+
+```elm
+type Msg
+    = ButtonClicked
+    | GotSearchInput String
+    | GotCommentInput Int String
+
+
+view model =
+    Html.div [ Html.Attributes.id "main" ]
+        [ Html.button [ Html.Events.onClick ButtonClicked ]
+            [ Html.text "Click me" ]
+        , Html.input [ Html.Events.onInput GotSearchInput ] []
+        , Html.div []
+            (List.range 1 5
+                |> List.map
+                    (\i ->
+                        Html.input [ Html.Events.onInput (GotCommentInput i) ] []
+                    )
+            )
+        ]
+```
+
+`Html.Attributes.id "main"` is easy to diff. If both the old and new virtual DOM have the `id` attribute, check if they are both set to the same string. If not, update it.
+
+`Html.Events.onClick ButtonClicked` is also easy to diff. `ButtonClicked` is just a value, so it can be compared, to know if the event listener needs to change.
+
+`Html.Events.onInput GotSearchInput` then? `GotSearchInput` is a _function._ Function cannot be compared in general. But this happens to be the _same function reference_ every time. So we can check for `===` reference equality in JavaScript to know if the event listener needs to change.
+
+`Html.Events.onInput (GotCommentInput i)` is problematic, though. It returns a _new_ function every time due to the partial application. (A lambda function would also be a _new_ function every time.) We simply can’t know when it changes, so the event listener needs to change every time.
+
+(And, on the lowest level, an event handler is just a pair of an event name and a _decoder_ (that results in a message). So when the original elm/virtual-dom compares your event handlers, it actually has to compare _decoders._ elm/json contains a hidden `_Json_equality` only for this reason. My fork does not need that function.)
+
+Then we need to introduce `Html.map` to the mix as well. The original elm/virtual-dom assigns `domNode.elm_event_node_ref = eventNode`, where `eventNode` is an object with a clever system of references, where different layers of `Html.map` can mutate chains of objects that eventually results in that when an event is triggered, all mapping functions can be applied. This system is pretty difficult to grasp, and can only be fully understood for a couple of seconds at a time. It also hides the infamous `Html.map` bug. All in all, this system avoid (at least theoretically), updating event listeners on every render. It also avoid having to recurse into lazy virtual nodes when they haven’t changed.
+
+My fork takes a much simpler approach. As mentioned in the “New DOM node pairing algorithm” section, my fork needs to recurse into _all_ virtual DOM nodes anyway, even into lazy nodes. And the diffing of event decoders often doesn’t work anyway, due to passing extra data in messages (that feels pretty common). So my fork simply updates all event listeners every render.
+
+What does “update an event listener” mean? The naive implementation would be to do `domNode.removeEventListener(eventName, oldListener); domNode.addEventListener(eventName, newListener)` on every render. That would be a bit slow, though. So the original elm/virtual-dom has always had a trick up its sleeve: It keeps the same event listener as before, and just mutates a reference to the latest event decoder. That’s much cheaper, and also what my fork does.
+
+Then finally, how does `Html.map` work in my fork? Internally, Elm has a `sendToApp` function, which is used to dispatch a message, which will call `update` and `subscriptions` and then render. Well, this is what an event listener looks like:
+
+```js
+function callback(event) {
+  var decoder = callback.decoder;
+  var sendToApp = callback.sendToApp;
+  var result = Json_runDecoder(decoder, event);
+  if (!Result_isOk(result)) {
+    return;
+  }
+  sendToApp(result.value);
+}
+
+domNode.addEventListener(eventName, callback);
+```
+
+You can see how it runs the event decoder, and if it succeeds calls `sendToApp` with the resulting message. Also notice how it reads `decoder` and `sendToApp` from properties on the function itself – these are the mutable references I mentioned before.
+
+In the whole diffing and rendering process, we pass that `sendToApp` function down, so that it can eventually be used by an element with an event listener. All `Html.map` then needs to do is to wrap that `sendToApp` function to also apply the mapping function. A bit like this:
+
+```js
+function render(virtualDomNode, sendToApp) {
+  if (virtualDomNode.$ === "Map") {
+    return render(virtualDomNode.node, function (msg) {
+      return sendToApp(virtualDomNode.f(msg));
+    });
+  }
+
+  // Then handle all other virtual DOM node variants.
+}
+```
+
+</details>
+
+<summary>Html.Keyed</summary>
+
+`Html.Keyed` in the original elm/virtual-dom is pretty simplistic. I basically operates on a “one lookahead” principle. It goes through the children of the old and new virtual DOM node pairwise. If the keys match, diff them and move on. Otherwise, look ahead one child on both sides and compare all four virtual DOM nodes, to find insertions, removals and swaps. If nothing still matches, degrade to the naive method of moving every child in place (which can lead to moving 10 children up instead of 2 down, for example).
+
+When you call `Html.div [] [child1, child2]`, the `Html.div` function immediately iterates over the linked list of children, turning it into an array. This is true of all element creating virtual DOM functions. In my version, I not only build that array, but also build a key lookup map for keyed nodes. During the diffing, my version also goes through the children of the old and new virtual DOM nodes pairwise. If the keys don’t match, I use the lookup map to detect insertions and removals. If there’s neither a insertion nor removal, it has to be a move. I then iterate from the end instead. If that also gets stuck, I compare the virtual DOM nodes from the forwards traversal with the ones from the backwards traversal, to find swaps. If things have moved so much that that doesn’t get us going again either, I switch to the naive method of moving every child in place. The difference in my fork, is that it uses the new `Element.prototype.moveBefore` API, if available, which allows moving an element on the page without “resetting” it (scroll position, animations, loaded state for iframes and video, etc.), so it isn’t as bad when this happens. Also, when I benchmarked `Element.prototype.moveBefore`, it was pretty fast – fast enough to seriously compete with a git-style diffing algorithm that minimizes the amount of moves.
 
 </details>
 
