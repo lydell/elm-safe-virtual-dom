@@ -474,8 +474,11 @@ Changes:
 - The `Html.map` bug where messages of the wrong type can appear in `update` functions is fixed, by completely changing how `Html.map` works. The old code was incredibly difficult to understand, but could theoretically skip more work in some cases. The new code is instead very simple, leaving little room for errors.
 - CSS custom properties, like `--primary-color`, can now be set with `Html.Attributes.style "--primary-color" "salmon"`.
 - `Svg.Attributes.xlinkHref` no longer mutates the DOM on every single render, which caused flickering in Safari sometimes.
+- TODO: Look through for more little fixes to add to this list.
 
-##### New DOM node pairing algorithm
+<details>
+
+<summary>New DOM node pairing algorithm</summary>
 
 The original elm/virtual-dom works like this:
 
@@ -631,11 +634,15 @@ var editIcon = {
 
 TODO the rest of the story.
 
-##### Virtualization
+</details>
+
+<details>
+
+<summary>Virtualization</summary>
 
 Virtualization in elm/virtual-dom has a bunch of problems:
 
-- It basically breaks down as soon as you use `Html.map` or `Html.Lazy`. It is _very_ common to have `Html.map` near the top of your Elm application, so this effectively results in most server-side rendered applications having no use of the virtualization at all – it’s just going to re-render the entire page. This is because, as I mentioned in the [New DOM node pairing algorithm](#new-dom-node-pairing-algorithm) section, because `Html.map` and `Html.Lazy` are nodes in the _virtual_ DOM tree, but not in the actual DOM tree. When just seeing the HTML, the virtualize function can’t know where the map and lazy nodes should be. The original elm/virtual-dom bails diffing if it tries to diff two virtual DOM nodes of different types (such as an `Element` node vs a `Map` node). My version instead consumes all map and lazy nodes from each side until we get to text and element nodes – then the actual diffing starts.
+- It basically breaks down as soon as you use `Html.map` or `Html.Lazy`. It is _very_ common to have `Html.map` near the top of your Elm application, so this effectively results in most server-side rendered applications having no use of the virtualization at all – it’s just going to re-render the entire page. This is because, as I mentioned in the “New DOM node pairing algorithm” section above, because `Html.map` and `Html.Lazy` are nodes in the _virtual_ DOM tree, but not in the actual DOM tree. When just seeing the HTML, the virtualize function can’t know where the map and lazy nodes should be. The original elm/virtual-dom bails diffing if it tries to diff two virtual DOM nodes of different types (such as an `Element` node vs a `Map` node). My version instead consumes all map and lazy nodes from each side until we get to text and element nodes – then the actual diffing starts.
 
 - It does not support textarea. Textarea elements are weird. You are supposed to add default text as _children_ of `<textarea>` in HTML, but in JavaScript (and therefore Elm), you are supposed to set `textarea.value` instead (updating the children does nothing). My fork handles this “children to value” conversion.
 
@@ -650,6 +657,8 @@ Virtualization in elm/virtual-dom has a bunch of problems:
 - It does not add click listeners on `<a>` elements for `Browser.application`.
 
 - My fork only virtualizes text nodes, and elements with the `data-elm` attribute. This allows third-party scripts to add elements to (for example) `<body>` before Elm initializing, with having Elm remove them during initialization.
+
+</details>
 
 #### elm/html
 
