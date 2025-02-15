@@ -138,7 +138,7 @@ The script tags are kept because preserving all elements inside the mount elemen
 </html>
 ```
 
-Many times, it’s difficult to predict or ensure which order scripts run in. Maybe you’re lucky and 99% of the time Elm initializes _before_ the chat widget. The remaining 1 % of visitors don’t get any chat. With my forks, it doesn’t matter which order things load. The chat won’t be nuked.
+Many times, it’s difficult to predict or ensure which order scripts run in. Maybe you’re lucky and 99 % of the time Elm initializes _before_ the chat widget. The remaining 1 % of visitors don’t get any chat. With my forks, it doesn’t matter which order things load. The chat won’t be nuked.
 
 But why do the elements mix with the script tags like that? It’s because of whitespace in HTML. We typically indent our HTML nicely, like we do in most programming languages. However, HTML doesn’t have a concept of whitespace and indentation, really. It just has text content inside elements. If you make a line break and a bunch of spaces for indentation in your HTML, you actually create a text DOM node with just whitespace in it. But typically you can’t see that, due to CSS. By default, whitespace is displayed collapsed as one space, and around block elements you don’t see them at all. It’s just between words and inline elements that they matter. You can control this with the CSS `white-space` property, and the `<pre>` element has `white-space` set to display all newlines and spaces by default.
 
