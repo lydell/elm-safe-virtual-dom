@@ -63,6 +63,8 @@ done
 
 # Clear cache so that the patched stuff is used for sure.
 rm -rf elm-stuff/0.19.1 elm-stuff/elm-pages
+# If you have elm-stuff/ folders in more places you might want to remove all of them:
+# find . -type d -path '*/elm-stuff/0.19.1' -exec rm -r {} +
 
 # Run your usual startup command with ELM_HOME set.
 run
