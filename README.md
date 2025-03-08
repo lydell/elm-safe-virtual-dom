@@ -342,11 +342,11 @@ Elm Land uses elm-watch code under the hood, so basically the same applies there
 
 <summary>elm-pages</summary>
 
-TL;DR: Any version should work, but to get the full experience you need [pull request #512](https://github.com/dillonkearns/elm-pages/pull/512) and [pull request #519](https://github.com/dillonkearns/elm-pages/pull/519), which should be released in whatever elm-pages version comes after 3.0.20.
+TL;DR: Any version should work, but to get the full experience you need 3.0.22 of the npm package, and 10.2.1 of the Elm package (to get [pull request #512](https://github.com/dillonkearns/elm-pages/pull/512) and [pull request #519](https://github.com/dillonkearns/elm-pages/pull/519)).
 
 Without the two pull requests mentioned above, the following caveats apply (read the [No longer empties the mount element](#no-longer-empties-the-mount-element) section for why):
 
-- elm-pages 3.0.20 renders extra whitespace nodes in `<body>`, causing the first diff with `view` to be off, leading to basically the entire page being re-rendered. That’s not worse than without my forks though: Without my forks your elm-pages app re-renders the entire page anyway due to `Lazy` and `Keyed` nodes (one of the things fixed in my forks).
+- Previous versions of elm-pages render extra whitespace nodes in `<body>`, causing the first diff with `view` to be off, leading to basically the entire page being re-rendered. That’s not worse than without my forks though: Without my forks your elm-pages app re-renders the entire page anyway due to `Lazy` and `Keyed` nodes (one of the things fixed in my forks).
 - You’ll end up with an extra `<div data-url>` element in `<body>`. I’m not sure what that affects.
 - You’ll end up with an extra `<div aria-live>` element in `<body>`. That should be fine, since it will stay unchanged. `aria-live` only announces changes to the DOM.
 
