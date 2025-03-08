@@ -386,7 +386,9 @@ Oh, and one more thing. Don’t make a _keyed_ elm-portal (like `Html.Keyed.node
 
 TL;DR: I don’t know.
 
-I have never used elm-optimize-level-2. But I suspect that [supportArraysForHtml](https://github.com/mdgriffith/elm-optimize-level-2/pull/108) might conflict with the changes in my fork.
+I have never used elm-optimize-level-2.
+
+There is a pull request for [supportArraysForHtml](https://github.com/mdgriffith/elm-optimize-level-2/pull/108) which I suspect might conflict with the changes in my fork. That pull request isn’t merged, so that shouldn’t be a problem, but it shows that there _could_ be things in elm-optimize-level-2 that aren’t supported.
 
 </details>
 
