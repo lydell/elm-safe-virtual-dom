@@ -689,6 +689,41 @@ This design imposes a rule: On each render, we always have to recurse through th
 
 - Finally, lazy nodes. The first thing `lazy` does is that your Elm function won’t be called unless the arguments change. The second thing is the virtual DOM diffing. If the arguments haven’t changed, then we’ll use the same virtual DOM as last time, which then by definition is unchanged. The original elm/virtual-dom then doesn’t need to look through that virtual DOM node at all, it you can just move on to the next. My fork still needs to recurse through it, for two reasons. The first one is similar to node removals: To increment the `i` counter in case a virtual DOM node used inside the lazy node is used again later. The second reason is due to `Html.map` – see the section about `Html.map`. Just like when recursing removed virtual DOM nodes, recursing lazy nodes also has a fast path function that only increments the `i` counter and makes sure event listeners are up-to-date. This means that `lazy` is slightly less lazy with my fork.
 
+The shape closest to reality of virtual DOM nodes is actually this:
+
+```js
+var editIcon = {
+  $: "Element",
+  tag: "img",
+  attributes: [{ name: "src", value: "/edit.svg" }],
+  children: [],
+  _1: {
+    oldDomNodes: [],
+    newDomNodes: [],
+    renderedAt: 0,
+    i: 0,
+  },
+};
+```
+
+It’s the same as before, except that I’ve put all the extra DOM node bookkeeping properties in an object inside the `_1` field. This is done for two reasons:
+
+1. I can make the `_1` field _non-enumerable._ That means it won’t appear in a `for (key in object)` loop. Elm uses such a loop in its equality function (used by `(==)`). You are not supposed to use `(==)` on `Html msg` values, but in case someone is, by making my additions to the virtual DOM node non-enumerable I haven’t changed the behavior of `(==)`.
+
+2. The field is called `_1`, but there can also be `_2` and `_3` etc. This is because if you define a constant like `none = Html.text ""` and use it in _multiple app instances,_ each app instance needs its own set of DOM bookkeeping. Each app instance needs to reference different DOM nodes.
+
+   To be clear, having multiple app instances means initializing the same app more than once (like calling `window.Elm.MyProgram.init({ node: node1 })` and `window.Elm.MyProgram.init({ node: node2 })`, or compiling multiple apps into one JavaScript file (`elm make src/Program1.elm src/Program2.elm --output bundle.js`) and initializing both.
+
+   App instances are kept track of by setting `rootDomNode.elmInstance` to a number. If the `elmInstance` property is missing, increment a “global” counter and set the field. Otherwise, use the number at `rootDomNode.elmInstance`.
+
+In summary, we started at the beautifully simple idea: “What if virtual DOM nodes simply had a reference to their real DOM node?” Then we learned that since virtual DOM nodes can be used more than once it’s not that simple.
+
+- `let separator = Html.hr [] [] in List.repeat 5 separator` results in `separator` being used 5 times. This requires us to store an _array_ of DOM nodes on the `separator` virtual DOM node value.
+- A _top-level_ `separator = Html.hr [] []` also requires us to have _two_ arrays of DOM nodes (old and new), since the `separator` value won’t be a “freshly made” value for just one render – it’s the exact same object reference forever.
+- A top-level constant used by _multiple app instances_ requires us to have _app instance specific_ DOM node arrays, so each app instance can keep track of their own DOM nodes.
+
+In addition to the DOM node arrays, we have an `i` index that keeps track of how far into the DOM node arrays we are. And we have `renderedAt` which avoids having to reset `i` and “move new to old” in a separate tree traversal after each render (it’s instead done during the _next_ render).
+
 </details>
 
 <details>
