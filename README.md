@@ -3,7 +3,11 @@
 _A robust virtual DOM for Elm._
 
 > [!IMPORTANT]  
-> This project has gone from heavy development to a **testing stage.** It is _not_ ready for production yet.
+> Can this be used in production? After a careful gradual rollout during May 2025, [Insurello](https://careers.insurello.se/) is using this in production since 2025-05-26. With a couple of thousand unique users per day, there haven’t been a single error reported automatically or to customer service. A few people at Discord have helped testing too.
+>
+> This project has gone from heavy development to a testing stage, which is now concluded, to a “getting across the finishing line” stage. Now, I’ll work on improving the installation process, creating pull requests to the forked Elm packages for increased visibility, and making an announcement.
+>
+> The readme below is written from a testing perspective, but if you feel savvy enough, you might be able to figure out how to use it in production, too (until I’ve made that easier).
 
 To help test this project, you need to know:
 
