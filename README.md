@@ -3,7 +3,7 @@
 _A robust virtual DOM for Elm._
 
 > [!IMPORTANT]  
-> Can this be used in production? After a careful gradual rollout during May 2025, [Insurello](https://careers.insurello.se/) is using this in production since 2025-05-26. With a couple of thousand unique users per day, there haven’t been a single error reported automatically or to customer service. A few people at Discord have helped testing too.
+> Can this be used in production? After a careful gradual rollout during May 2025, [Insurello](https://careers.insurello.se/) is using this in production since 2025-05-26. With a couple of thousand unique users per day, there haven’t been a single error reported automatically or to customer service. A few people on Discord have helped testing too. However, there are definitely [areas that are more and less tested](#what-to-test) (since not all projects use all features).
 >
 > This project has gone from heavy development to a testing stage, which is now concluded, to a “getting across the finishing line” stage. Now, I’ll work on improving the installation process, creating pull requests to the forked Elm packages for increased visibility, and making an announcement.
 >
@@ -424,12 +424,12 @@ Here are some specific things that I have tested a bit myself, but would like to
 - Does Grammarly work?
 - Do other extensions work?
 - Do your third-party scripts work?
+- Web components/Custom elements.
+- Multiple Elm apps on the same page.
 
 I’m also looking for testing in apps with heavy use of:
 
 - elm-pages.
-- Web components/Custom elements.
-- Multiple Elm apps on the same page.
 - Heavy or important use of `Html.Lazy`.
 - Heavy or important use of `Html.Keyed`.
 - Use of [elm-explorations/webgl](https://elm.dmy.fr/packages/elm-explorations/webgl/latest/).
@@ -923,7 +923,7 @@ My fork of elm/browser is a mixed bag of small changes. I intend to make separat
 
 - Speaking of the debugger, in Firefox the debugger window background is dark if your computer is in dark mode, making it hard to read things in the debugger. I’ve set the background color of the debugger window explicitly to white, which is the recommendation for web pages anyway.
 
-- You might have noticed that when Elm’s virtual DOM crashes, you get an error in the browser console many times per second. This is because Elm generally draws on the next animation frame using `requestAnimationFrame`, and if it crashes during rendering it gets stuck in an infinite `requestAnimationFrame` loop. That’s really annoying. When fixing changing the code to not get caught in a loop if there is an exception, I also noticed that the whole `requestAnimationFrame` was a bit off. Basically, if you also subscribe to `Browser.Events.onAnimationFrame`, you could end up with `update` and `view` being 1 frame out of sync, and some frames could be skipped. I made a [demo showing these animation frame oddities](https://lydell.github.io/elm-animation-frame-oddities/). My fork fixes that, except the demo cases where the animation frames come via a port – I don’t think that is solvable.
+- You might have noticed that when Elm’s virtual DOM crashes, you get an error in the browser console many times per second. This is because Elm generally draws on the next animation frame using `requestAnimationFrame`, and if it crashes during rendering it gets stuck in an infinite `requestAnimationFrame` loop. That’s really annoying. When changing the code to not get caught in a loop if there is an exception, I also noticed that the whole `requestAnimationFrame` was a bit off. Basically, if you also subscribe to `Browser.Events.onAnimationFrame`, you could end up with `update` and `view` being 1 frame out of sync, and some frames could be skipped. I made a [demo showing these animation frame oddities](https://lydell.github.io/elm-animation-frame-oddities/). My fork fixes that, except the demo cases where the animation frames come via a port – I don’t think that is solvable.
 
 - Finally, there’s a bug where clicks on `<a>` elements _without_ `href` still end up producing a `LinkClicked` messages, even though such elements shouldn’t be clickable. I’ve fixed that. (But note that this fix doesn’t work during development with elm-watch – see the [Compatibility with tooling](#compatibility-with-tooling) section.) [elm/browser#34](https://github.com/elm/browser/issues/34) [elm/browser#55](https://github.com/elm/browser/issues/55) [elm/browser#64](https://github.com/elm/browser/issues/64)
 
