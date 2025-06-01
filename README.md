@@ -5,7 +5,7 @@ _A robust virtual DOM for Elm._
 > [!IMPORTANT]  
 > Can this be used in production? After a careful gradual rollout during May 2025, [Insurello](https://careers.insurello.se/) is using this in production since 2025-05-26. With a couple of thousand unique users per day, there haven’t been a single error reported automatically or to customer service. A few people on Discord have helped testing too. However, there are definitely [areas that are more and less tested](#what-to-test) (since not all projects use all features).
 >
-> This project has gone from heavy development to a testing stage, which is now concluded, to a “getting across the finishing line” stage. Now, I’ll work on improving the installation process, creating pull requests to the forked Elm packages for increased visibility, and making an announcement.
+> This project has gone from heavy development to a testing stage, which is now concluded, to a “getting across the finishing line” stage. Now, I’ll work on improving the installation process, and making an announcement.
 >
 > The readme below is written from a testing perspective, but if you feel savvy enough, you might be able to figure out how to use it in production, too (until I’ve made that easier).
 
@@ -29,6 +29,21 @@ This repo:
 - [lydell/virtual-dom](https://github.com/lydell/virtual-dom)
 - [lydell/html](https://github.com/lydell/html)
 - [lydell/browser](https://github.com/lydell/browser)
+
+#### The pull requests
+
+I’ve created pull requests to the upstream Elm packages for increased visibility, and so that the [elm-janitor](https://github.com/elm-janitor/) project can pick them up.
+
+- The main one: [elm/virtual-dom#187](https://github.com/elm/virtual-dom/pull/187)
+- To make virtualization work 100 %: [elm/html#259](https://github.com/elm/html/pull/259)
+- Allow virtualization to set up `<a>` click listeners: [elm/browser#137](https://github.com/elm/browser/pull/137)
+- Fix debugger virtualization: [elm/browser#140](https://github.com/elm/browser/pull/140)
+- Avoid `requestAnimationFrame` error loop on virtual DOM crashes: [elm/browser#138](https://github.com/elm/browser/pull/138)
+
+The following pull requests are part of [lydell/browser@safe](https://github.com/lydell/browser/tree/safe), but aren’t technically related to “safe virtual DOM”:
+
+- Fix debugger background color: [elm/browser#136](https://github.com/elm/browser/pull/136)
+- Fix links without href: [browser#139](https://github.com/elm/browser/pull/139)
 
 ### Changes
 
