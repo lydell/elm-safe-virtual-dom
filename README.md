@@ -3,15 +3,11 @@
 _A robust virtual DOM for Elm._
 
 > [!IMPORTANT]  
-> Can this be used in production? After a careful gradual rollout during May 2025, [Insurello](https://careers.insurello.se/) is using this in production since 2025-05-26. With a couple of thousand unique users per day, there haven’t been a single error reported automatically or to customer service. A few people on Discord have helped testing too. However, there are definitely [areas that are more and less tested](#what-to-test) (since not all projects use all features).
->
-> This project has gone from heavy development to a testing stage, which is now concluded, to a “getting across the finishing line” stage. Now, I’ll work on improving the installation process, and making an announcement.
->
-> The readme below is written from a testing perspective, but if you feel savvy enough, you might be able to figure out how to use it in production, too (until I’ve made that easier).
+> Can this be used in production? After a careful gradual rollout during May 2025, [Insurello](https://careers.insurello.se/) is using this in production since 2025-05-26. With a couple of thousand unique users per day, there haven’t been a single error reported automatically or to customer service. A few people on Discord have helped testing too. However, there are definitely [areas that are more and less tested](#what-to-test) (since not all Elm apps use all features).
 
-To help test this project, you need to know:
+To use this project, you need to know:
 
-1. [What you are testing](#what-you-are-testing)
+1. [What this is](#what-this-is)
 2. [How to set it up](#how-to-set-it-up)
 3. [What to test](#what-to-test)
 4. [How to provide feedback](#how-to-provide-feedback)
@@ -19,10 +15,10 @@ To help test this project, you need to know:
 This repo:
 
 - Documents the changes I’ve made in forks of DOM related core Elm packages.
-- Has a script for testing those forks in your own project.
-- Is where you can open issues for things you find while testing my forks.
+- Documents how to use my forks in your own project.
+- Is where you can open issues for things specific to my forks.
 
-## What you are testing
+## What this is
 
 ### The forks
 
@@ -43,7 +39,7 @@ I’ve created pull requests to the upstream Elm packages for increased visibili
 The following pull requests are part of [lydell/browser@safe](https://github.com/lydell/browser/tree/safe), but aren’t technically related to “safe virtual DOM”:
 
 - Fix debugger background color: [elm/browser#136](https://github.com/elm/browser/pull/136)
-- Fix links without href: [browser#139](https://github.com/elm/browser/pull/139)
+- Fix links without href: [elm/browser#139](https://github.com/elm/browser/pull/139)
 
 ### Changes
 
@@ -64,7 +60,7 @@ See also [Detailed descriptions of all the changes](#detailed-descriptions-of-al
    - elm/virtual-dom: 1.0.3
    - elm/html 1.0.0
    - elm/browser 1.0.2
-5. Download [lydell.bash](#lydellbash) and follow the instructions inside.
+5. [Install the forked packages](#installation).
 6. Verify that the forked code actually is used. Open a built Elm JS file and search for `_VirtualDom_wrap`. If it’s there, it worked.
 
 ### Remove virtual DOM related hacks and workarounds
@@ -177,7 +173,132 @@ There is a pull request for [supportArraysForHtml](https://github.com/mdgriffith
 
 </details>
 
-### lydell.bash
+### Installation
+
+elm/virtual-dom and elm/browser both contain Kernel (JavaScript) code. Kernel code is not allowed on [package.elm-lang.org](https://package.elm-lang.org/), except for in `elm/` and `elm-explorations/*` packages. So I can’t publish for example lydell/virtual-dom on the package site, and as such you can’t install it from there.
+
+elm/html does not have any Kernel code, but on the other hand, lots of other packages depend on elm/html, so it’s not really a viable solution to publish lydell/html.
+
+Because of the above constraints, installing my forks requires a bit more creativity.
+
+There are currently two main ways to install them:
+
+1. A pretty comprehensive Node.js script called [replace-kernel-packages.mjs](#replace-kernel-packagesmjs).
+
+2. A simpler bash script – [lydell.bash](#lydellbash) – that was originally made for _testing_ my forks, so it cuts a few corners. It’s still uses the same approach as the Node.js script, and might be a simpler way to learn the technique if you’re familiar with bash.
+
+There are two future ways of installing:
+
+1. I’m collaborating with the [Lamdera Compiler](https://github.com/lamdera/compiler/). We’re experimenting with installing my forks automatically when using the Lamdera Compiler! Note that the Lamdera Compiler is open source and can be used for vanilla Elm apps, not just Lamdera apps. If this effort pans out, it’ll be by far the easiest way to install, since all you need to do is replace your `elm make` command with `lamdera make`.
+
+2. The [elm-janitor](https://github.com/elm-janitor/) project might merge the [pull requests](#the-pull-requests) I’ve made to the upstream Elm packages. If that happens, you can use their [apply-patches](https://github.com/elm-janitor/apply-patches) script to install (not just my forks, but fixes to other `elm/*` packages as well). Or whatever other way there is to install elm-janitor fixes.
+
+#### How to modify installed Elm packages
+
+This section explains how to modify installed Elm packages. Both [replace-kernel-packages.mjs](#replace-kernel-packagesmjs) and [lydell.bash](#lydellbash) use this technique. You can skip this section if you’re not particularly interested, but it might be easier to use those scripts if you read this.
+
+When you run `elm make`, the Elm compiler downloads packages needed by your project. It stores them in `~/.elm/` on Linux and macOS, and in `%APPDATA%\elm` on Windows. You can customize this location by setting the `ELM_HOME` environment variable. Because of that, we often call the package installation directory “your `ELM_HOME`”.
+
+If you take a look in your `ELM_HOME`, you’ll see folders for every Elm package and version you have ever installed. Each package folder contains the source code of the package (`.elm` files), as well as Kernel code for `elm/*` and `elm-explorations/*` packages (`.js` files).
+
+What happens if you edit a file in there? Well … not much. Because of caching. But if you bust the cache – then you can make any changes you like. There are two things you need to remove after each edit:
+
+1. Each package in `ELM_HOME` contains an `artifacts.dat` file (or `artifacts.x.dat` if you use Lamdera). This file isn’t downloaded, it’s created by the Elm compiler when compiling your project.
+2. The local `elm-stuff/` folder in your project.
+
+Something to keep in mind when making changes in the default `ELM_HOME` location (`~/.elm/`), is that it affects _all_ your Elm projects on your computer. This means that if you mess something up, you mess up _all_ your projects. On the other hand, if want my forks in all your projects, that can also be convenient. If you mess things up badly, you can just delete `ELM_HOME` and have the Elm compiler download everything from scratch.
+
+Personally, I don’t like making “global” changes like that. I generally want my projects to be more “self contained”. So I recommend using a folder local to the project for `ELM_HOME` if you’re gonna mess around with the packages in there.
+
+A simple thing to do is setting `ELM_HOME=elm-stuff/elm-home/`. Then your `ELM_HOME` will be inside your regular, local `elm-stuff/`. This is convenient because you probably already have `elm-stuff/` in your `.gitignore` file, and tools like elm-format and elm-watch ignore files in `elm-stuff/`.
+
+A downside of putting `ELM_HOME` inside `elm-stuff/`, is that the Elm Compiler sometimes instructs you to delete `elm-stuff/` when something has gone wrong with the files in there. If you do, you’ll also delete `elm-stuff/elm-home/`. That’s a bit annoying, because downloading all packages takes more time than just compiling without `elm-stuff/` cache, and requires Internet access. It also depends on the [package.elm-lang.org](https://package.elm-lang.org/) server being up. This can be solved in two ways.
+
+The first way is to learn to delete `elm-stuff/0.19.1/` instead of the full `elm-stuff/` folder. Than’s a good habit anyway, since `elm-stuff/` also contains elm-test and elm-review stuff that you don’t really need to delete ever.
+
+However, teaching that to all collaborators of the project might be difficult, so you might consider it worth putting your local `ELM_HOME` somewhere else. An obvious candidate is a local `elm-home/` folder. However, you’ll quickly notice that elm-format wants to format all the files in there. So `elm-home/elm-stuff/` is a better choice. elm-format ignores anything in folders called `elm-stuff/`, no matter where they are, or if they are “real” `elm-stuff/` folders or not.
+
+Ok, so now we’ve talked about how to make edits to Elm packages. But in reality we don’t want to make little edits here and there, we want to replace whole packages – with my forks in particular. How do we do that?
+
+I recommend copying the `elm.json` file and `src/` folders of my forks into your project and committing them. Then all you need to do is copying them into your local `ELM_HOME`, delete `artifacts.dat`, delete `elm-stuff/0.19.1/`, and set `ELM_HOME` when you then run the Elm compiler for your project. Copying the files from my forks is a very simple, robust and secure way of getting them into your project. It should work on your computer, your colleague’s computer, and on your continuous integration server. And it should keep working tomorrow. No surprises.
+
+If you absolutely despise the idea of vendoring a bunch of code into your project, you can experiment with downloading it as needed. If you pull code from my forks on GitHub, you might want to think about:
+
+- Locking to a specific commit.
+- Verifying that you got the same code as last time with a hash.
+- Caching the download.
+
+#### replace-kernel-packages.mjs
+
+Download [replace-kernel-packages.mjs](./replace-kernel-packages.mjs) from this repo and follow these steps:
+
+1. Create `elm-kernel-replacements/elm-stuff/`. This folder is supposed to be committed, despite the `elm-stuff/` (it’s just there to avoid elm-format wanting to format all the files in there).
+
+2. Copy my forks into it. See below for exactly what the folder structure is supposed to look like.
+
+3. Create a `source.txt` file in each fork folder. This file shows where the replacement package was copied from (for humans). Update the file each time you copy over new changes. This allows the script to detect when it needs to redo work and clear caches. I recommend putting a link to a commit in `source.txt`, such as `https://github.com/lydell/virtual-dom/commit/86a70be439e9a3c06e3d2911e701f350a5f19e86`. (If you feel really fancy, you could use git submodules or git subtrees, but don’t go into that rabbit hole unless you really want to. I wouldn’t recommend it myself.)
+
+4. Modify the start command for your project:
+
+   - Make sure that the `replaceKernelPackages` function in `replace-kernel-packages.mjs` is run before your usual command. It copies `elm-kernel-replacements/elm-stuff/` into `elm-home/elm-stuff/`, replacing the mentioned packages.
+
+   - Make sure that `ELM_HOME` is set to the local `elm-home/elm-stuff/` folder. This folder is supposed to be in the `.gitignore` file.
+
+The script is pretty smart and only removes `artifacts.dat` and `elm-stuff/0.19.1/` if needed, avoiding unnecessarily slow compile times. It also has a bunch of validation checks, to make sure that nothing strange is going on.
+
+Here’s the expected folder structure for `elm-kernel-replacements`:
+
+```
+elm-kernel-replacements
+└── elm-stuff
+    └── elm
+        ├── browser
+        │   └── 1.0.2
+        │       ├── elm.json
+        │       ├── source.txt
+        │       └── src
+        │           ├── Browser
+        │           │   ├── AnimationManager.elm
+        │           │   ├── Dom.elm
+        │           │   ├── Events.elm
+        │           │   └── Navigation.elm
+        │           ├── Browser.elm
+        │           ├── Debugger
+        │           │   ├── Expando.elm
+        │           │   ├── History.elm
+        │           │   ├── Main.elm
+        │           │   ├── Metadata.elm
+        │           │   ├── Overlay.elm
+        │           │   └── Report.elm
+        │           └── Elm
+        │               └── Kernel
+        │                   ├── Browser.js
+        │                   ├── Browser.server.js
+        │                   └── Debugger.js
+        ├── html
+        │   └── 1.0.0
+        │       ├── elm.json
+        │       ├── source.txt
+        │       └── src
+        │           ├── Html
+        │           │   ├── Attributes.elm
+        │           │   ├── Events.elm
+        │           │   ├── Keyed.elm
+        │           │   └── Lazy.elm
+        │           └── Html.elm
+        └── virtual-dom
+            └── 1.0.3
+                ├── elm.json
+                ├── source.txt
+                └── src
+                    ├── Elm
+                    │   └── Kernel
+                    │       ├── VirtualDom.js
+                    │       └── VirtualDom.server.js
+                    └── VirtualDom.elm
+```
+
+#### lydell.bash
 
 Download [lydell.bash](./lydell.bash) from this repo and follow the instructions inside.
 
@@ -187,23 +308,24 @@ The bash script:
 - Instructs you to type in the command you use to run your app.
 - Runs that command with `ELM_HOME` set `elm-stuff/elm-home/` (local to your app) and copies files from my forks into it.
 
-The script should work on macOS and Linux (but you might need to tweak it if you use some funky setup). On Windows, you can do the steps manually, or write your own script. Maybe share it here if you know more Windows people who might want to test?
+The script should work on macOS and Linux (but you might need to tweak it if you use some funky setup). On Windows, you can do the steps manually, or write your own script.
+
+Compared to [replace-kernel-packages.mjs](./replace-kernel-packages.mjs), `lydell.bash` does the bare minimum to get things working, and isn’t particularly smart.
 
 ## What to test
 
-Here are some things to look out for while testing:
+Here are some things to test before shipping to production:
 
 - Does the page crash?
 - Do elements end up in the wrong place?
 - Do elements end up with the wrong style?
 - Do you notice the page feeling much slower?
-- Can you make Elm crash by poking around in the inspector in the browser devtools?
 
 Here are some specific things that I have tested a bit myself, but would like to see tested more:
 
 - Google Translate work? Does it display usable text after updates to the DOM? Can you find a language that breaks down?
 - Does Grammarly work?
-- Do other extensions work?
+- Do other browser extensions work?
 - Do your third-party scripts work?
 - Web components/Custom elements.
 - Multiple Elm apps on the same page.
@@ -224,15 +346,14 @@ It’s good testing in multiple environments:
 - Different devices (computers, tablets, phones).
 - Different browsers.
 
-When you’re done testing, take a break and then test the same amount again, if you have the time. You’ll probably find a bug when doing the most unexpected little thing.
+When you’re done testing, take a break and then test the same amount again, if you have the time. If you’ll find a bug, it’ll probably be while doing the most unexpected little thing.
 
 ## How to provide feedback
 
-There are three main ways to provide feedback:
+There are two main ways to provide feedback:
 
 1. Open an issue in this repo about a problem.
-2. Open an issue in this repo about a successful (problem free) test. Mention what you tested and how it went.
-3. Chat in the `#elm-virtual-dom` channel on the [Incremental Elm Discord](https://incrementalelm.com/chat/).
+2. Chat in the `#elm-virtual-dom` channel on the [Incremental Elm Discord](https://incrementalelm.com/chat/).
 
 If you encounter a bug, it would be very helpful if you could:
 
@@ -318,7 +439,7 @@ I explain those points more in the [properties-vs-attributes.md](https://github.
 
 #### elm/browser
 
-My fork of elm/browser is a mixed bag of small changes. I intend to make separate pull requests for each thing.
+My fork of elm/browser is a mixed bag of small changes. I have made separate [pull requests](#the-pull-requests) for each thing.
 
 - In my fork of elm/virtual-dom, I made the “virtualize” function complete, making it work in practice. One aspect of virtualization that could _not_ be solved in elm/virtual-dom on its own, was the bug where `<a>` elements didn’t get their click listener attached during virtualization, making them do full page reloads instead of being routed by Elm. This had to be fixed in _both_ the virtual-dom package, _and_ the browser package. This is the change in my fork that is the most related to the virtual-dom changes.
 
