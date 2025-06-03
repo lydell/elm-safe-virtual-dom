@@ -234,7 +234,7 @@ Download [replace-kernel-packages.mjs](./replace-kernel-packages.mjs) from this 
 
 1. Create `elm-kernel-replacements/elm-stuff/`. This folder is supposed to be committed, despite the `elm-stuff/` (it’s just there to avoid elm-format wanting to format all the files in there).
 
-2. Copy my forks into it. See below for exactly what the folder structure is supposed to look like.
+2. Copy [my forks](#the-forks) into it. See below for exactly what the folder structure is supposed to look like.
 
 3. Create a `source.txt` file in each fork folder. This file shows where the replacement package was copied from (for humans). Update the file each time you copy over new changes. This allows the script to detect when it needs to redo work and clear caches. I recommend putting a link to a commit in `source.txt`, such as `https://github.com/lydell/virtual-dom/commit/86a70be439e9a3c06e3d2911e701f350a5f19e86`. (If you feel really fancy, you could use git submodules or git subtrees, but don’t go into that rabbit hole unless you really want to. I wouldn’t recommend it myself.)
 
