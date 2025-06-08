@@ -399,6 +399,7 @@ Changes:
 - [“Virtualization” is now completed](./details/virtualization.md), making it usable in practice, for example for elm-pages. This means that server-side rendered pages no longer have to redraw the whole page when Elm initializes.
 - CSS custom properties, like `--primary-color`, can now be set with `Html.Attributes.style "--primary-color" "salmon"`. [elm/html#177](https://github.com/elm/html/issues/177)
 - `Svg.Attributes.xlinkHref` no longer mutates the DOM on every single render, which caused flickering in Safari sometimes. [elm/virtual-dom#62](https://github.com/elm/virtual-dom/issues/62)
+- `lazy` no longer changes behavior for `<input>`. [elm/virtual-dom#189](https://github.com/elm/virtual-dom/issues/189)
 
 #### elm/html
 
