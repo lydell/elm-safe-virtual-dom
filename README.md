@@ -57,7 +57,7 @@ See also [Detailed descriptions of all the changes](#detailed-descriptions-of-al
 2. Read [Are the forks drop-in replacements?](#are-the-forks-drop-in-replacements) below.
 3. Review the [compatibility with tooling](#compatibility-with-tooling) around Elm you use (if any).
 4. Make sure that you are using these exact versions (check your elm.json):
-   - elm/virtual-dom: 1.0.3
+   - elm/virtual-dom: 1.0.4
    - elm/html 1.0.0
    - elm/browser 1.0.2
 5. [Install the forked packages](#installation).
@@ -287,7 +287,7 @@ elm-kernel-replacements
         │           │   └── Lazy.elm
         │           └── Html.elm
         └── virtual-dom
-            └── 1.0.3
+            └── 1.0.4
                 ├── elm.json
                 ├── source.txt
                 └── src
