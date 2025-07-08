@@ -193,6 +193,12 @@ There are two future ways of installing:
 
 2. The [elm-janitor](https://github.com/elm-janitor/) project might merge the [pull requests](#the-pull-requests) I’ve made to the upstream Elm packages. If that happens, you can use their [apply-patches](https://github.com/elm-janitor/apply-patches) script to install (not just my forks, but fixes to other `elm/*` packages as well). Or whatever other way there is to install elm-janitor fixes.
 
+Finally, there are two ways for those who like living on the edge:
+
+1. The [Zokka](https://github.com/Zokka-Dev/zokka-compiler) fork of the Elm compiler supports overriding dependencies.
+
+2. [elm-sideload](https://github.com/jmpavlick/elm-sideload) is a CLI tool for sideloading/overriding Elm packages from your elm.json.
+
 #### How to modify installed Elm packages
 
 This section explains how to modify installed Elm packages. Both [replace-kernel-packages.mjs](#replace-kernel-packagesmjs) and [lydell.bash](#lydellbash) use this technique. You can skip this section if you’re not particularly interested, but it might be easier to use those scripts if you read this.
@@ -227,6 +233,8 @@ If you absolutely despise the idea of vendoring a bunch of code into your projec
 - Locking to a specific commit.
 - Verifying that you got the same code as last time with a hash.
 - Caching the download.
+
+The [elm-sideload](https://github.com/jmpavlick/elm-sideload) tool attempts to do this.
 
 #### replace-kernel-packages.mjs
 
