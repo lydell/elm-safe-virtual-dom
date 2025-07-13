@@ -42,6 +42,7 @@ The following pull requests are part of [lydell/browser@safe](https://github.com
 - Fix debugger background color: [elm/browser#136](https://github.com/elm/browser/pull/136)
 - Fix debugger pause button: [elm/browser#144](https://github.com/elm/browser/pull/144)
 - Fix debugger display of non-ascii custom type variants: [elm/browser#142](https://github.com/elm/browser/pull/142)
+- Fix debugger being slow or crashing on big collections in the model: [elm/browser#145](https://github.com/elm/browser/pull/145)
 
 ### Changes
 
@@ -463,6 +464,8 @@ My fork of elm/browser is a mixed bag of small changes. I have made separate [pu
   - The pause button doesn’t do anything. Implementing it seems to have been forgotten – it always acts like a play button. I’ve implemented it.
 
   - Custom type variants starting with a non-ascii letter (like `Ärtan`) were displayed correctly in the messages sidebar, but not in the main view of the debugger. I’ve synced the two so that they show up as expected always.
+
+  - Large collections, like lists with thousands of items, either cause the debugger and the whole application to be very slow, or crash with a stack overflow. I’ve made it fast and not crashing by only expanding 100 items of collections at a time, with a “view more” button.
 
 - You might have noticed that when Elm’s virtual DOM crashes, you get an error in the browser console many times per second. This is because Elm generally draws on the next animation frame using `requestAnimationFrame`, and if it crashes during rendering it gets stuck in an infinite `requestAnimationFrame` loop. That’s really annoying. When changing the code to not get caught in a loop if there is an exception, I also noticed that the whole `requestAnimationFrame` was a bit off. Basically, if you also subscribe to `Browser.Events.onAnimationFrame`, you could end up with `update` and `view` being 1 frame out of sync, and some frames could be skipped. I made a [demo showing these animation frame oddities](https://lydell.github.io/elm-animation-frame-oddities/). My fork fixes that, except the demo cases where the animation frames come via a port – I don’t think that is solvable.
 
