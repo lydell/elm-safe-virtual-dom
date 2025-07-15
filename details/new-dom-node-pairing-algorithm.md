@@ -216,7 +216,7 @@ It’s the same as before, except that I’ve put all the extra DOM node bookkee
 
    To be clear, having multiple app instances means initializing the same app more than once (like calling `window.Elm.MyProgram.init({ node: node1 })` and `window.Elm.MyProgram.init({ node: node2 })`, or compiling multiple apps into one JavaScript file (`elm make src/Program1.elm src/Program2.elm --output bundle.js`) and initializing both.
 
-   App instances are kept track of by setting `rootDomNode.elmInstance` to a number. If the `elmInstance` property is missing, increment a “global” counter and set the field. Otherwise, use the number at `rootDomNode.elmInstance`.
+   App instances are kept track of by setting `rootDomNode.elmInstance` to a number. It is set during virtualization, by incrementing a “global” counter and setting the field. When rendering, use the number at `rootDomNode.elmInstance`. (There’s also a field called `rootDomNode.elmRenderCount` which is initialized the same way.)
 
 In summary, we started at the beautifully simple idea: “What if virtual DOM nodes simply had a reference to their real DOM node?” Then we learned that since virtual DOM nodes can be used more than once it’s not that simple.
 
