@@ -99,7 +99,7 @@ export function replaceKernelPackages() {
     alreadyUpToDate &&
     fs.existsSync(oDat) &&
     // This is specific to lydell/virtual-dom: Change as needed if you patch other things.
-    !fs.readFileSync(oDat, "utf-8").includes("_VirtualDom_wrap")
+    !fs.readFileSync(oDat, "utf-8").includes("_VirtualDom_createTNode")
   ) {
     alreadyUpToDate = false;
   }

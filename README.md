@@ -3,7 +3,7 @@
 _A robust virtual DOM for Elm._
 
 > [!IMPORTANT]  
-> Can this be used in production? After a careful gradual rollout during May 2025, [Insurello](https://careers.insurello.se/) is using this in production since 2025-05-26. With a couple of thousand unique users per day, there haven’t been a single error reported automatically or to customer service. A few people on Discord have helped testing too. However, there are definitely [areas that are more and less tested](#what-to-test) (since not all Elm apps use all features).
+> Can this be used in production? After a careful gradual rollout during May 2025, [Insurello](https://careers.insurello.se/) is using this in production since 2025-05-26. With a couple of thousand unique users per day, there haven’t been a single error reported automatically or to customer service. After that, multiple people on Discord started trying it out. They did find a few bugs, which I never ran into at Insurello, but was able to fix quickly. There are definitely [areas that are more and less tested](#what-to-test) (since not all Elm apps use all features).
 
 To use this project, you need to know:
 
@@ -64,7 +64,7 @@ See also [Detailed descriptions of all the changes](#detailed-descriptions-of-al
    - elm/html 1.0.0
    - elm/browser 1.0.2
 5. [Install the forked packages](#installation).
-6. Verify that the forked code actually is used. Open a built Elm JS file and search for `_VirtualDom_wrap`. If it’s there, it worked.
+6. Verify that the forked code actually is used. If you use `Browser.application` or `Browser.document`, the easiest way is to run `document.body.elmTree` in the browser console. If that gives back an object, you’re all set. For `Browser.element` and `Browser.sandbox`, you can select the root node of your app in the browser inspector, and then run `$0.elmTree` in the console (`$0` refers to the currently inspected element). You can also open a built Elm JS file and search for `_VirtualDom_createTNode`. If it’s there, it worked.
 
 ### Remove virtual DOM related hacks and workarounds
 
@@ -109,6 +109,7 @@ For hot reloading purposes, elm-watch replaces some functions that I’ve also c
 
 - When virtualizing `<a>` elements, they won’t get their click listener, resulting in them causing full page reloads instead of being routed by Elm. I don’t think that many people use both server-side rendering and elm-watch though. And in elm-watch 1.1.4+, 1.2.2+ and 2.0.0-beta.6+, I’ve actually added in the missing pieces so that this _will_ work. A caveat here is that if you install my fork of the virtual-dom package, but _not_ my fork of the browser package, you’ll get my forked browser experience during development with elm-watch anyway, but _not_ in production builds. Having something work during development but not in production sucks, but I don’t see any reason for someone not installing all three of my forks.
 - When clicking on an `<a>` element _without_ the `href` attribute, they’ll be routed by Elm, missing out on my fix where nothing should happen instead. I don’t have a solution to this problem yet. I _could_ include this fix for everyone, but I think that would be misleading (even worse than the above caveat). Production-only bugs suck.
+- If you have `main : Html msg` (instead of a `Program`), it won’t work until this elm-watch PR is released: https://github.com/lydell/elm-watch/pull/111
 
 </details>
 
@@ -217,7 +218,7 @@ What happens if you edit a file in there? Well … not much. Because of caching.
 
 Something to keep in mind when making changes in the default `ELM_HOME` location (`~/.elm/`), is that it affects _all_ your Elm projects on your computer. This means that if you mess something up, you mess up _all_ your projects. On the other hand, if want my forks in all your projects, that can also be convenient. If you mess things up badly, you can just delete `ELM_HOME` and have the Elm compiler download everything from scratch.
 
-Personally, I don’t like making “global” changes like that. I generally want my projects to be more “self contained”. So I recommend using a folder local to the project for `ELM_HOME` if you’re gonna mess around with the packages in there.
+Personally, I don’t like making “global” changes like that. I generally want my projects to be more “self contained”. So I recommend using a folder local to the project for `ELM_HOME` if you’re gonna mess around with the packages in there. (Though there is a downside to a local `ELM_HOME` – see the end of this section.)
 
 A simple thing to do is setting `ELM_HOME=elm-stuff/elm-home/`. Then your `ELM_HOME` will be inside your regular, local `elm-stuff/`. This is convenient because you probably already have `elm-stuff/` in your `.gitignore` file, and tools like elm-format and elm-watch ignore files in `elm-stuff/`.
 
@@ -238,6 +239,8 @@ If you absolutely despise the idea of vendoring a bunch of code into your projec
 - Caching the download.
 
 The [elm-sideload](https://github.com/jmpavlick/elm-sideload) tool attempts to do this.
+
+Finally, I mentioned that there’s a downside to having a local `ELM_HOME`. Your IDE. You’ll probably run your IDE with `ELM_HOME` unset, which means that it’ll go looking for packages in the default `~/.elm` location. That works fine, as long as `~/.elm` contains all the packages you need. If you add a new package in your project, it might only be installed in the _local_ `ELM_HOME`. Then your IDE might be unhappy. You can solve this by running one more install command so that the global `~/.elm` folder is updated too. Or you could try to configure your IDE to have the local `ELM_HOME` set. Or you could decided to patch the global `~/.elm` instead. There is no perfect solution.
 
 #### replace-kernel-packages.mjs
 
@@ -332,23 +335,26 @@ Here are some things to test before shipping to production:
 - Do elements end up with the wrong style?
 - Do you notice the page feeling much slower?
 
-Here are some specific things that I have tested a bit myself, but would like to see tested more:
+Here are some specific things that I have tested quite a bit myself, but would like to see tested more:
 
 - Google Translate work? Does it display usable text after updates to the DOM? Can you find a language that breaks down?
 - Does Grammarly work?
 - Do other browser extensions work?
 - Do your third-party scripts work?
+
+Here are some things that people on Discord have tested a lot:
+
 - Web components/Custom elements.
 - Multiple Elm apps on the same page.
+- Heavy or important use of `Html.Keyed`.
+- Use of [elm-program-test](https://elm.dmy.fr/packages/avh4/elm-program-test/latest/), or any HTML based testing in elm-test.
 
 I’m also looking for testing in apps with heavy use of:
 
 - elm-pages.
 - Heavy or important use of `Html.Lazy`.
-- Heavy or important use of `Html.Keyed`.
 - Use of [elm-explorations/webgl](https://elm.dmy.fr/packages/elm-explorations/webgl/latest/).
 - Use of [elm-explorations/markdown](https://elm.dmy.fr/packages/elm-explorations/markdown/latest/).
-- Use of [elm-program-test](https://elm.dmy.fr/packages/avh4/elm-program-test/latest/), or any HTML based testing in elm-test.
 - Crazy, weird, edge-case:y things.
 
 It’s good testing in multiple environments:
