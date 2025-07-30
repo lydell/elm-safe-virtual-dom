@@ -79,9 +79,11 @@ Hacks and workarounds you might want to remove:
 
 ### Are the forks drop-in replacements?
 
-As close to drop-in as they can be. The forks don’t change the Elm interface at all (adds no functions, changes no functions, removes no functions, or types). All behavior except one detail should be equivalent, except less buggy. [Performance](#performance) should be unchanged.
+As close to drop-in as they can be. The forks don’t change the Elm interface at all (adds no functions, changes no functions, removes no functions, or types). All behavior _except two details_ should be equivalent, except less buggy. [Performance](#performance) should be unchanged.
 
-The goal was to be 100 % backwards compatible. For some people, it is. For others, there’s one change that is in “breaking change territory” which can be summarized as: **Elm no longer empties the mount element.**
+The goal was to be 100 % backwards compatible. For some people, it is. For others, there are two changes that are in “breaking change territory” which can be summarized as: **Elm no longer empties the mount element** and **setters should have getters on custom elements.**
+
+#### Elm no longer empties the mount element
 
 To be more compatible with third-party scripts, my fork changes how Elm “virtualizes” elements. My fork only virtualizes elements with the `data-elm` attribute (instead of _all_ child elements), and lets any other elements be. It often felt like Elm would “empty” your element on first render, but that’s not actually the case. It “virtualizes” the element, and then updates it to match your `view` function. That often results in whatever was there already being removed, but if you happened to already have an element of the right type in the right place, it would just be mutated to match `view`.
 
@@ -96,6 +98,60 @@ Read more:
 - [Comprehensive `Browser.application` example](./details/breaking-changes.md#comprehensive-browserapplication-example)
 - [Comprehensive `Browser.element` example](./details/breaking-changes.md#comprehensive-browserelement-example)
 - [Server-side rendering notes](./details/breaking-changes.md#server-side-rendering-notes)
+
+#### Setters should have getters on custom elements
+
+When using [Custom Elements](https://guide.elm-lang.org/interop/custom_elements) with Elm, you can pass data to it using either `Html.Attributes.attribute` or `Html.Attributes.property`. If you use `Html.Attributes.attribute` there shouldn’t be anything you need to think about, but if you use `Html.Attributes.property` you might want to read on.
+
+It’s common to implement custom element properties as setters to get notified as they change:
+
+```js
+customElements.define(
+  "my-custom-element",
+  class extends HTMLElement {
+    set myProperty(value) {
+      this._myProperty = value;
+      this.update();
+    }
+
+    update() {
+      // Do stuff here.
+    }
+  }
+);
+```
+
+The above code works just fine with the original elm/virtual-dom package. With my fork, it still works but is less performant. The fix is easy, though: Add a getter for `myProperty` as well! (Those familiar with classes might already have been screaming “where’s the getter?” for a while, since it’s a common rule that all setters should also have getters, and vice versa.)
+
+```diff
+ customElements.define(
+   "my-custom-element",
+   class extends HTMLElement {
++    get myProperty() {
++      return this._myProperty;
++    }
+
+     set myProperty(value) {
+       this._myProperty = value;
+       this.update();
+     }
+
+     update() {
+       // Do stuff here.
+     }
+   }
+ );
+```
+
+Without the getter, my fork of elm/virtual-dom is going to set `myProperty` on every render, even if the value for it hasn’t changed on the Elm side! That’s because in my fork, properties are compared to _the actual DOM node_ (while attributes are compared to the previous _virtual_ DOM node). If there’s no getter, trying to read `.myProperty` gives `undefined` back, which is never equal to the value you are trying to set.
+
+So, why this change then? It’s because some properties, like `value` and `checked` (for text inputs and checkboxes, respectively) can be changed by user interactions (typing in fields and toggling checkboxes). So comparing to the previous virtual DOM isn’t enough to make sure a DOM node is up-to-date. The original elm/virtual-dom has special cases for those two properties in two places, to compare them to the actual DOM node instead.
+
+My fork takes a different approach. It _always_ compares _all_ properties to the actual DOM node. This is simpler, and also catches `selectedIndex` (for dropdowns) which also can be modified by the user (by selecting something) – and there are probably more properties like this in the vast DOM interfaces.
+
+(My fork still compares _attributes_ to the previous virtual DOM. It even changes most `Html.Attributes` functions to use attributes instead of properties in [elm/html#259](https://github.com/elm/html/pull/259).)
+
+All in all, make sure that your setters also have getters on your custom elements, to avoid unnecessary work on each render.
 
 ### Compatibility with tooling
 
