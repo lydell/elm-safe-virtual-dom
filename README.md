@@ -101,27 +101,7 @@ Read more:
 
 #### Setters should have getters on custom elements
 
-When using [Custom Elements](https://guide.elm-lang.org/interop/custom_elements) with Elm, you can pass data to it using either `Html.Attributes.attribute` or `Html.Attributes.property`. If you use `Html.Attributes.attribute` there shouldn’t be anything you need to think about, but if you use `Html.Attributes.property` you might want to read on.
-
-It’s common to implement custom element properties as setters to get notified as they change:
-
-```js
-customElements.define(
-  "my-custom-element",
-  class extends HTMLElement {
-    set myProperty(value) {
-      this._myProperty = value;
-      this.update();
-    }
-
-    update() {
-      // Do stuff here.
-    }
-  }
-);
-```
-
-The above code works just fine with the original elm/virtual-dom package. With my fork, it still works but is less performant. The fix is easy, though: Add a getter for `myProperty` as well! (Those familiar with classes might already have been screaming “where’s the getter?” for a while, since it’s a common rule that all setters should also have getters, and vice versa.)
+When using [Custom Elements](https://guide.elm-lang.org/interop/custom_elements) with Elm, it’s common to implement custom element properties as setters to get notified as they change. Make sure that they have a getter, too:
 
 ```diff
  customElements.define(
@@ -143,15 +123,7 @@ The above code works just fine with the original elm/virtual-dom package. With m
  );
 ```
 
-Without the getter, my fork of elm/virtual-dom is going to set `myProperty` on every render, even if the value for it hasn’t changed on the Elm side! That’s because in my fork, properties are compared to _the actual DOM node_ (while attributes are compared to the previous _virtual_ DOM node). If there’s no getter, trying to read `.myProperty` gives `undefined` back, which is never equal to the value you are trying to set.
-
-So, why this change then? It’s because some properties, like `value` and `checked` (for text inputs and checkboxes, respectively) can be changed by user interactions (typing in fields and toggling checkboxes). So comparing to the previous virtual DOM isn’t enough to make sure a DOM node is up-to-date. The original elm/virtual-dom has special cases for those two properties in two places, to compare them to the actual DOM node instead.
-
-My fork takes a different approach. It _always_ compares _all_ properties to the actual DOM node. This is simpler, and also catches `selectedIndex` (for dropdowns) which also can be modified by the user (by selecting something) – and there are probably more properties like this in the vast DOM interfaces.
-
-(My fork still compares _attributes_ to the previous virtual DOM. It even changes most `Html.Attributes` functions to use attributes instead of properties in [elm/html#259](https://github.com/elm/html/pull/259).)
-
-All in all, make sure that your setters also have getters on your custom elements, to avoid unnecessary work on each render.
+Otherwise `myProperty` is going to be set on every render, even if the value for it hasn’t changed on the Elm side! Read all about it in the [longer section about setters and getters](./details/breaking-changes.md#setters-should-have-getters-on-custom-elements).
 
 ### Compatibility with tooling
 

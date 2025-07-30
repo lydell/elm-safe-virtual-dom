@@ -1,8 +1,10 @@
 # Breaking changes
 
-I haven’t changed the Elm interface at all (no added functions, no changed functions, no removed functions, or types). All behavior except one detail should be equivalent, except less buggy.
+I haven’t changed the Elm interface at all (no added functions, no changed functions, no removed functions, or types). All behavior _except two details_ should be equivalent, except less buggy.
 
-The goal was to be 100 % backwards compatible. For some people, it is. For others, there’s one change that is in “breaking change territory” which can be summarized as: **Elm no longer empties the mount element.**
+The goal was to be 100 % backwards compatible. For some people, it is. For others, there are two changes that are in “breaking change territory” which can be summarized as: [Elm no longer empties the mount element](#elm-no-longer-empties-the-mount-element) and [setters should have getters on custom elements](#).
+
+## Elm no longer empties the mount element
 
 To be more compatible with third-party scripts, my fork changes how Elm “virtualizes” elements. My fork only virtualizes elements with the `data-elm` attribute (instead of _all_ child elements), and lets any other elements be. It often felt like Elm would “empty” your element on first render, but that’s not actually the case. It “virtualizes” the element, and then updates it to match your `view` function. That often results in whatever was there already being removed, but if you happened to already have an element of the right type in the right place, it would just be mutated to match `view`.
 
@@ -12,7 +14,7 @@ This results in:
 - If you use CSS selectors like `body > :first-child`, `body > :last-child` or `h1 + p`, they might not apply, since your `<script>` tags in `<body>` might still be around, and might be mixed with the elements rendered by Elm.
 - If you do server-side rendering and expect Elm to hydrate/virtualize/adopt/take charge over the server-side rendered HTML, you need to make sure that all elements (except the root element) has `data-elm`. If you create the HTML with Elm (such as with elm-pages), you’ll get this automatically when you use my forks. But if you create elements some other way, make sure they have `data-elm`.
 
-## Comprehensive `Browser.application` example
+### Comprehensive `Browser.application` example
 
 Given this HTML:
 
@@ -138,7 +140,7 @@ All this `data-elm` business is needed because Elm decided to take control of th
 - Assume all text nodes should be virtualized.
 - Mark all elements that should be virtualized with `data-elm`.
 
-## Comprehensive `Browser.element` example
+### Comprehensive `Browser.element` example
 
 Given this HTML:
 
@@ -207,7 +209,7 @@ Probably the easiest solution in this case is to slap `data-elm` to that origina
 
 Then it’ll work like without my forks. See the “Comprehensive `Browser.application` example” above for why this happens, and why `data-elm` makes a difference.
 
-## Server-side rendering notes
+### Server-side rendering notes
 
 When server-side rendering, make sure that your HTML doesn’t have any extra whitespace, and that all elements have `data-elm`:
 
@@ -234,3 +236,57 @@ Having no extra whitespace directly after `<body>` is extra important, since it�
 It’s OK to have extra elements before or after the Elm elements. It’s also OK to have extra whitespace _after_ all the Elm elements.
 
 `data-elm` should appear automatically on every element rendered by Elm just from using my forks, if your server-side setup works by turning the return value from `view` straight into an HTML string, like elm-pages does. But if you render the HTML via for example JSDOM, they won’t appear. The `data-elm` attribute is only present in the virtual DOM data (causing elm-pages to print it), but is skipped during rendering in my forks, to not clutter the browser devtools.
+
+## Setters should have getters on custom elements
+
+When using [Custom Elements](https://guide.elm-lang.org/interop/custom_elements) with Elm, you can pass data to it using either `Html.Attributes.attribute` or `Html.Attributes.property`. If you use `Html.Attributes.attribute` there shouldn’t be anything you need to think about, but if you use `Html.Attributes.property` you might want to read on.
+
+It’s common to implement custom element properties as setters to get notified as they change:
+
+```js
+customElements.define(
+  "my-custom-element",
+  class extends HTMLElement {
+    set myProperty(value) {
+      this._myProperty = value;
+      this.update();
+    }
+
+    update() {
+      // Do stuff here.
+    }
+  }
+);
+```
+
+The above code works just fine with the original elm/virtual-dom package. With my fork, it still works but is less performant. The fix is easy, though: Add a getter for `myProperty` as well! (Those familiar with classes might already have been screaming “where’s the getter?” for a while, since it’s a common rule that all setters should also have getters, and vice versa.)
+
+```diff
+ customElements.define(
+   "my-custom-element",
+   class extends HTMLElement {
++    get myProperty() {
++      return this._myProperty;
++    }
+
+     set myProperty(value) {
+       this._myProperty = value;
+       this.update();
+     }
+
+     update() {
+       // Do stuff here.
+     }
+   }
+ );
+```
+
+Without the getter, my fork of elm/virtual-dom is going to set `myProperty` on every render, even if the value for it hasn’t changed on the Elm side! That’s because in my fork, properties are compared to _the actual DOM node_ (while attributes are compared to the previous _virtual_ DOM node). If there’s no getter, trying to read `.myProperty` gives `undefined` back, which is never equal to the value you are trying to set.
+
+So, why this change then? It’s because some properties, like `value` and `checked` (for text inputs and checkboxes, respectively) can be changed by user interactions (typing in fields and toggling checkboxes). So comparing to the previous virtual DOM isn’t enough to make sure a DOM node is up-to-date. The original elm/virtual-dom has special cases for those two properties in two places, to compare them to the actual DOM node instead.
+
+My fork takes a different approach. It _always_ compares _all_ properties to the actual DOM node. This is simpler, and also catches `selectedIndex` (for dropdowns) which also can be modified by the user (by selecting something) – and there are probably more properties like this in the vast DOM interfaces.
+
+(My fork still compares _attributes_ to the previous virtual DOM. It even changes most `Html.Attributes` functions to use attributes instead of properties in [elm/html#259](https://github.com/elm/html/pull/259).)
+
+All in all, make sure that your setters also have getters on your custom elements, to avoid unnecessary work on each render.
