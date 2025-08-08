@@ -137,7 +137,7 @@ For hot reloading purposes, elm-watch replaces some functions that I’ve also c
 
 - When virtualizing `<a>` elements, they won’t get their click listener, resulting in them causing full page reloads instead of being routed by Elm. I don’t think that many people use both server-side rendering and elm-watch though. And in elm-watch 1.1.4+, 1.2.2+ and 2.0.0-beta.6+, I’ve actually added in the missing pieces so that this _will_ work. A caveat here is that if you install my fork of the virtual-dom package, but _not_ my fork of the browser package, you’ll get my forked browser experience during development with elm-watch anyway, but _not_ in production builds. Having something work during development but not in production sucks, but I don’t see any reason for someone not installing all three of my forks.
 - When clicking on an `<a>` element _without_ the `href` attribute, they’ll be routed by Elm, missing out on my fix where nothing should happen instead. I don’t have a solution to this problem yet. I _could_ include this fix for everyone, but I think that would be misleading (even worse than the above caveat). Production-only bugs suck.
-- If you have `main : Html msg` (instead of a `Program`), it won’t work until this elm-watch PR is released: https://github.com/lydell/elm-watch/pull/111
+- If you have `main : Html msg` (instead of a `Program`), hot reloading of it only works with elm-watch 1.2.3+ and 2.0.0-beta.7+.
 
 </details>
 
