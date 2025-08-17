@@ -209,6 +209,21 @@ Probably the easiest solution in this case is to slap `data-elm` to that origina
 
 Then it’ll work like without my forks. See the “Comprehensive `Browser.application` example” above for why this happens, and why `data-elm` makes a difference.
 
+Finally, if you have a lot of `Browser.element` and it’s too much work adding `data-elm` here and there, there is a workaround. It sort of defeats the purpose of `data-elm`, but you can make sure that all elements have the attribute before initializing the Elm app:
+
+```js
+function addDataElm(node) {
+  for (const child of node.getElementsByTagName("*")) {
+    child.setAttribute("data-elm", "");
+  }
+  return node;
+}
+
+Elm.Main.init({ node: addDataElm(document.getElementById("root")) });
+```
+
+It can be fine to use that technique where there is a low chance of third-party scripts or browser extensions having inserted any extra elements. (For that reason, it is not a good idea to use it with `Browser.application`.) If you use this technique, you’re not any worse off than before using my forks, and you can migrate away from it over time if you want.
+
 ### Server-side rendering notes
 
 When server-side rendering, make sure that your HTML doesn’t have any extra whitespace, and that all elements have `data-elm`:
