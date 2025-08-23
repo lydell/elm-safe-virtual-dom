@@ -169,9 +169,11 @@ Without the two pull requests mentioned above, the following caveats apply (read
 
 <summary>Lamdera</summary>
 
-TL;DR: You need to compile Lamdera yourself with [pull request #40](https://github.com/lamdera/compiler/pull/40). **Note:** This only applies if you _actually_ use Lamdera. Not if you just use Lamdera as an alternative Elm compiler, like elm-pages does.
+TL;DR: To test your Lamdera app with my forks _locally,_ you need to compile Lamdera yourself with [pull request #40](https://github.com/lamdera/compiler/pull/40). **Note:** This only applies if you _actually_ use Lamdera. Not if you just use Lamdera as an alternative Elm compiler, like elm-pages does.
 
 Lamdera copies some functions from elm/virtual-dom, to make modifications to them. My fork of elm/virtual-dom also changes those functions. The pull request mentioned above copies those changes, and supports both the original version and my fork. It also adds `data-elm` to an element that `lamdera live` expects to disappear when Elm initializes.
+
+For Lamdera in production, follow [pull request #65](https://github.com/lamdera/compiler/pull/65).
 
 </details>
 
