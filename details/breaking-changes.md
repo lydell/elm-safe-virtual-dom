@@ -2,7 +2,7 @@
 
 I haven’t changed the Elm interface at all (no added functions, no changed functions, no removed functions, or types). All behavior _except two details_ should be equivalent, except less buggy.
 
-The goal was to be 100 % backwards compatible. For some people, it is. For others, there are two changes that are in “breaking change territory” which can be summarized as: [Elm no longer empties the mount element](#elm-no-longer-empties-the-mount-element) and [setters should have getters on custom elements](#).
+The goal was to be 100 % backwards compatible. For some people, it is. For others, there are three changes that are in “breaking change territory” which can be summarized as: [Elm no longer empties the mount element](#elm-no-longer-empties-the-mount-element), [Properties are diffed against the _real_ DOM](#properties-are-diffed-against-the-real-dom) and [setters should have getters on custom elements](#setters-should-have-getters-on-custom-elements).
 
 ## Elm no longer empties the mount element
 
@@ -251,6 +251,18 @@ Having no extra whitespace directly after `<body>` is extra important, since it�
 It’s OK to have extra elements before or after the Elm elements. It’s also OK to have extra whitespace _after_ all the Elm elements.
 
 `data-elm` should appear automatically on every element rendered by Elm just from using my forks, if your server-side setup works by turning the return value from `view` straight into an HTML string, like elm-pages does. But if you render the HTML via for example JSDOM, they won’t appear. The `data-elm` attribute is only present in the virtual DOM data (causing elm-pages to print it), but is skipped during rendering in my forks, to not clutter the browser devtools.
+
+## Properties are diffed against the _real_ DOM
+
+The DOM has both [attributes and properties](https://github.com/elm/html/blob/master/properties-vs-attributes.md).
+
+As mentioned in the section about changes in [elm/html](../README.md#elmhtml), the functions in the original `Html.Attributes` were mostly implemented as _properties,_ while in my version they are mostly implemented as _attributes._
+
+One reason for the switch to attributes is because many properties can be changed by user actions. For example, `value` can be changed by a user typing in a text field, and `checked` by a user clicking a checkbox. The original elm/virtual-dom special cases those two properties and diffs those against the _real_ DOM node, instead of against the previous virtual DOM node.
+
+But there are more properties that user actions can control. For example, `selected` on `<option>` element can be toggled by the user when they pick an option in a `<select>` element. In my fork of elm/virtual-dom, instead of having a hard coded list of special cases, I simply diff _all_ properties against the _real_ DOM. But remember that I changed most `Html.Attributes` functions to use _attributes_ instead, so in practice there aren’t that many things that use properties and thus are diffed against the _real_ DOM.
+
+In NoRedInk’s blog post about adopting elm-safe-virtual-dom they have a nice example of [some `<select>`s stopped working](https://blog.noredink.com/post/800011916366020608/adopting-elm-safe-virtual-dom#:~:text=Some%20selects%20stopped%20working) for them (due to an oversight in their Elm code that was uncovered by the stricter behavior for properties in my fork).
 
 ## Setters should have getters on custom elements
 

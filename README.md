@@ -3,7 +3,13 @@
 _A robust virtual DOM for Elm._
 
 > [!IMPORTANT]  
-> Can this be used in production? After a careful gradual rollout during May 2025, [Insurello](https://careers.insurello.se/) is using this in production since 2025-05-26. With a couple of thousand unique users per day, there haven’t been a single error reported automatically or to customer service. After that, multiple people on Discord started trying it out. They did find a few bugs, which I never ran into at Insurello, but was able to fix quickly. There are definitely [areas that are more and less tested](#what-to-test) (since not all Elm apps use all features).
+> Can this be used in production? Yes! Here’s a little timeline:
+>
+> - May 2025: After a careful gradual rollout during May 2025, [Insurello](https://careers.insurello.se/) starts using this in production. With a couple of thousand unique users per day, there haven’t been a single error reported automatically or to customer service.
+> - June 2025: Multiple people on Discord starts trying it out. They find a few bugs, which I never ran into at Insurello, but I manage to fix them quickly.
+> - July 2025: Some more bugs are fixed.
+> - September 2025: [StorageMart](https://www.storage-mart.com/) starts using this in production.
+> - November 2025: [NoRedInk](https://www.noredink.com/) starts using this in production, and write a [very helpful blog post on how they adopted it](https://blog.noredink.com/post/800011916366020608/adopting-elm-safe-virtual-dom). They go from thousands of virtual DOM related errors per day to zero. This also uncovers one more bug that is fixed.
 
 To use this project, you need to know:
 
@@ -79,9 +85,9 @@ Hacks and workarounds you might want to remove:
 
 ### Are the forks drop-in replacements?
 
-As close to drop-in as they can be. The forks don’t change the Elm interface at all (adds no functions, changes no functions, removes no functions, or types). All behavior _except two details_ should be equivalent, except less buggy. [Performance](#performance) should be unchanged.
+As close to drop-in as they can be. The forks don’t change the Elm interface at all (adds no functions, changes no functions, removes no functions, or types). All behavior _except the details below_ should be equivalent, except less buggy. [Performance](#performance) should be unchanged.
 
-The goal was to be 100 % backwards compatible. For some people, it is. For others, there are two changes that are in “breaking change territory” which can be summarized as: **Elm no longer empties the mount element** and **setters should have getters on custom elements.**
+The goal was to be 100 % backwards compatible. For some people, it is. For others, there are three changes that are in “breaking change territory” which can be summarized as: [Elm no longer empties the mount element](#elm-no-longer-empties-the-mount-element), [properties are diffed against the _real_ DOM](#properties-are-diffed-against-the-real-dom) and [setters should have getters on custom elements](#setters-should-have-getters-on-custom-elements).
 
 #### Elm no longer empties the mount element
 
@@ -98,6 +104,18 @@ Read more:
 - [Comprehensive `Browser.application` example](./details/breaking-changes.md#comprehensive-browserapplication-example)
 - [Comprehensive `Browser.element` example](./details/breaking-changes.md#comprehensive-browserelement-example)
 - [Server-side rendering notes](./details/breaking-changes.md#server-side-rendering-notes)
+
+#### Properties are diffed against the _real_ DOM
+
+The DOM has both [attributes and properties](https://github.com/elm/html/blob/master/properties-vs-attributes.md).
+
+As mentioned in the section about changes in [elm/html](#elmhtml), the functions in the original `Html.Attributes` were mostly implemented as _properties,_ while in my version they are mostly implemented as _attributes._
+
+One reason for the switch to attributes is because many properties can be changed by user actions. For example, `value` can be changed by a user typing in a text field, and `checked` by a user clicking a checkbox. The original elm/virtual-dom special cases those two properties and diffs those against the _real_ DOM node, instead of against the previous virtual DOM node.
+
+But there are more properties that user actions can control. For example, `selected` on `<option>` element can be toggled by the user when they pick an option in a `<select>` element. In my fork of elm/virtual-dom, instead of having a hard coded list of special cases, I simply diff _all_ properties against the _real_ DOM. But remember that I changed most `Html.Attributes` functions to use _attributes_ instead, so in practice there aren’t that many things that use properties and thus are diffed against the _real_ DOM.
+
+In NoRedInk’s blog post about adopting elm-safe-virtual-dom they have a nice example of [some `<select>`s stopped working](https://blog.noredink.com/post/800011916366020608/adopting-elm-safe-virtual-dom#:~:text=Some%20selects%20stopped%20working) for them (due to an oversight in their Elm code that was uncovered by the stricter behavior for properties in my fork).
 
 #### Setters should have getters on custom elements
 
@@ -215,11 +233,13 @@ elm/html does not have any Kernel code, but on the other hand, lots of other pac
 
 Because of the above constraints, installing my forks requires a bit more creativity.
 
-There are currently two main ways to install them:
+There are currently three main ways to install them:
 
 1. A pretty comprehensive Node.js script called [replace-kernel-packages.mjs](#replace-kernel-packagesmjs).
 
 2. A simpler bash script – [lydell.bash](#lydellbash) – that was originally made for _testing_ my forks, so it cuts a few corners. It’s still uses the same approach as the Node.js script, and might be a simpler way to learn the technique if you’re familiar with bash.
+
+3. An example Nix setup, based on the comprehensive Node.js script above, called [elm-safe-vdom-nix](https://github.com/omnibs/elm-safe-vdom-nix).
 
 There are two future ways of installing:
 
@@ -375,13 +395,14 @@ Here are some specific things that I have tested quite a bit myself, but would l
 Here are some things that people on Discord have tested a lot:
 
 - Web components/Custom elements.
+- [Contenteditable](https://blog.noredink.com/post/800011916366020608/adopting-elm-safe-virtual-dom#:~:text=contenteditable%20nodes%20stopped%20working) elements.
 - Multiple Elm apps on the same page.
 - Heavy or important use of `Html.Keyed`.
 - Use of [elm-program-test](https://elm.dmy.fr/packages/avh4/elm-program-test/latest/), or any HTML based testing in elm-test.
+- elm-pages.
 
 I’m also looking for testing in apps with heavy use of:
 
-- elm-pages.
 - Heavy or important use of `Html.Lazy`.
 - Use of [elm-explorations/webgl](https://elm.dmy.fr/packages/elm-explorations/webgl/latest/).
 - Use of [elm-explorations/markdown](https://elm.dmy.fr/packages/elm-explorations/markdown/latest/).
