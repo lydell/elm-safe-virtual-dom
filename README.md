@@ -66,8 +66,8 @@ See also [Detailed descriptions of all the changes](#detailed-descriptions-of-al
 2. Read [Are the forks drop-in replacements?](#are-the-forks-drop-in-replacements) below.
 3. Review the [compatibility with tooling](#compatibility-with-tooling) around Elm you use (if any).
 4. Make sure that you are using these exact versions (check your elm.json):
-   - elm/virtual-dom: 1.0.4
-   - elm/html 1.0.0
+   - elm/virtual-dom: 1.0.5
+   - elm/html 1.0.1
    - elm/browser 1.0.2
 5. [Install the forked packages](#installation).
 6. Verify that the forked code actually is used. If you use `Browser.application` or `Browser.document`, the easiest way is to run `document.body.elmTree` in the browser console. If that gives back an object, you’re all set. For `Browser.element` and `Browser.sandbox`, you can select the root node of your app in the browser inspector, and then run `$0.elmTree` in the console (`$0` refers to the currently inspected element). You can also open a built Elm JS file and search for `_VirtualDom_createTNode`. If it’s there, it worked.
@@ -340,7 +340,7 @@ elm-kernel-replacements
         │                   ├── Browser.server.js
         │                   └── Debugger.js
         ├── html
-        │   └── 1.0.0
+        │   └── 1.0.1
         │       ├── elm.json
         │       ├── source.txt
         │       └── src
@@ -351,7 +351,7 @@ elm-kernel-replacements
         │           │   └── Lazy.elm
         │           └── Html.elm
         └── virtual-dom
-            └── 1.0.4
+            └── 1.0.5
                 ├── elm.json
                 ├── source.txt
                 └── src
