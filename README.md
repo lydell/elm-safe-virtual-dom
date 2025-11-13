@@ -29,7 +29,7 @@ This repo:
 ### The forks
 
 - [lydell/virtual-dom](https://github.com/lydell/virtual-dom)
-- [lydell/html](https://github.com/lydell/html)
+- [lydell/html](https://github.com/lydell/html) (or [omnibs/elm-css](https://github.com/omnibs/elm-css/tree/safe) if you use elm-css)
 - [lydell/browser](https://github.com/lydell/browser)
 
 #### The pull requests
@@ -37,7 +37,7 @@ This repo:
 I’ve created pull requests to the upstream Elm packages for increased visibility, and so that the [elm-janitor](https://github.com/elm-janitor/) project can pick them up.
 
 - The main one: [elm/virtual-dom#187](https://github.com/elm/virtual-dom/pull/187)
-- To make virtualization work 100 %: [elm/html#259](https://github.com/elm/html/pull/259)
+- To make virtualization work 100 %: [elm/html#259](https://github.com/elm/html/pull/259) (same but for elm-css: [rtfeldman/elm-css#598](https://github.com/rtfeldman/elm-css/pull/598))
 - Allow virtualization to set up `<a>` click listeners: [elm/browser#137](https://github.com/elm/browser/pull/137)
 - Fix debugger virtualization: [elm/browser#140](https://github.com/elm/browser/pull/140)
 - Avoid `requestAnimationFrame` error loop on virtual DOM crashes: [elm/browser#138](https://github.com/elm/browser/pull/138)
@@ -87,7 +87,12 @@ Hacks and workarounds you might want to remove:
 
 As close to drop-in as they can be. The forks don’t change the Elm interface at all (adds no functions, changes no functions, removes no functions, or types). All behavior _except the details below_ should be equivalent, except less buggy. [Performance](#performance) should be unchanged.
 
-The goal was to be 100 % backwards compatible. For some people, it is. For others, there are three changes that are in “breaking change territory” which can be summarized as: [Elm no longer empties the mount element](#elm-no-longer-empties-the-mount-element), [properties are diffed against the _real_ DOM](#properties-are-diffed-against-the-real-dom) and [setters should have getters on custom elements](#setters-should-have-getters-on-custom-elements).
+The goal was to be 100 % backwards compatible. For some people, it is. For others, there are four changes that are in “breaking change territory” which can be summarized as:
+
+- [Elm no longer empties the mount element](#elm-no-longer-empties-the-mount-element)
+- [Properties are diffed against the _real_ DOM](#properties-are-diffed-against-the-real-dom)
+- [Setters should have getters on custom elements](#setters-should-have-getters-on-custom-elements)
+- [elm-program-test stops working when using elm-css](#elm-program-test-stops-working-when-using-elm-css)
 
 #### Elm no longer empties the mount element
 
@@ -143,6 +148,14 @@ When using [Custom Elements](https://guide.elm-lang.org/interop/custom_elements)
 
 Otherwise `myProperty` is going to be set on every render, even if the value for it hasn’t changed on the Elm side! Read all about it in the [longer section about setters and getters](./details/breaking-changes.md#setters-should-have-getters-on-custom-elements).
 
+#### elm-program-test stops working when using elm-css
+
+When you install the forked elm/html, elm-program-test won’t find elements anymore if you use elm-css.
+
+The solution is to not only install the forked elm/html, but also the forked rtfeldman/elm-css: [omnibs/elm-css](https://github.com/rtfeldman/elm-css/pull/598). As mentioned in the section about changes in [elm/html](#elmhtml), that’s recommended anyway (even if you don’t use elm-program-test).
+
+Read more about this in the [longer section about elm-program-test and elm-css](./details/breaking-changes.md#elm-program-test-stops-working-when-using-elm-css).
+
 ### Compatibility with tooling
 
 <details>
@@ -175,7 +188,7 @@ Elm Land uses elm-watch code under the hood, so basically the same applies there
 
 TL;DR: Any version should work, but to get the full experience you need 3.0.22 of the npm package, and 10.2.1 of the Elm package (to get [pull request #512](https://github.com/dillonkearns/elm-pages/pull/512) and [pull request #519](https://github.com/dillonkearns/elm-pages/pull/519)).
 
-Without the two pull requests mentioned above, the following caveats apply (read about the [Elm no longer emptying the mount element](./details/breaking-changes.md) for why):
+Without the two pull requests mentioned above, the following caveats apply (read about the [Elm no longer emptying the mount element](./details/breaking-changes.md#elm-no-longer-empties-the-mount-element) for why):
 
 - Previous versions of elm-pages render extra whitespace nodes in `<body>`, causing the first diff with `view` to be off, leading to basically the entire page being re-rendered. That’s not worse than without my forks though: Without my forks your elm-pages app re-renders the entire page anyway due to `Lazy` and `Keyed` nodes (one of the things fixed in my forks).
 - You’ll end up with an extra `<div data-url>` element in `<body>`. I’m not sure what that affects.
@@ -505,6 +518,8 @@ In short, attributes are preferred because:
 4. Attributes are easier to diff.
 
 I explain those points more in the [properties-vs-attributes.md](https://github.com/lydell/html/blob/safe/properties-vs-attributes.md) file. (elm/html already had that file. I extended it with the numbered list at the end.)
+
+For the above reasons, it’s recommended to use [omnibs/elm-css](https://github.com/rtfeldman/elm-css/pull/598) if you use elm-css. elm-css basically has a copy of `Html.Attributes` which needs the same changes as I made in elm/html.
 
 #### elm/browser
 

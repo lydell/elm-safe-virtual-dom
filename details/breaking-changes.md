@@ -2,7 +2,12 @@
 
 I haven’t changed the Elm interface at all (no added functions, no changed functions, no removed functions, or types). All behavior _except two details_ should be equivalent, except less buggy.
 
-The goal was to be 100 % backwards compatible. For some people, it is. For others, there are three changes that are in “breaking change territory” which can be summarized as: [Elm no longer empties the mount element](#elm-no-longer-empties-the-mount-element), [Properties are diffed against the _real_ DOM](#properties-are-diffed-against-the-real-dom) and [setters should have getters on custom elements](#setters-should-have-getters-on-custom-elements).
+The goal was to be 100 % backwards compatible. For some people, it is. For others, there are four changes that are in “breaking change territory” which can be summarized as:
+
+- [Elm no longer empties the mount element](#elm-no-longer-empties-the-mount-element)
+- [Properties are diffed against the _real_ DOM](#properties-are-diffed-against-the-real-dom)
+- [Setters should have getters on custom elements](#setters-should-have-getters-on-custom-elements)
+- [elm-program-test stops working when using elm-css](#elm-program-test-stops-working-when-using-elm-css)
 
 ## Elm no longer empties the mount element
 
@@ -317,3 +322,30 @@ My fork takes a different approach. It _always_ compares _all_ properties to the
 (My fork still compares _attributes_ to the previous virtual DOM. It even changes most `Html.Attributes` functions to use attributes instead of properties in [elm/html#259](https://github.com/elm/html/pull/259).)
 
 All in all, make sure that your setters also have getters on your custom elements, to avoid unnecessary work on each render.
+
+## elm-program-test stops working when using elm-css
+
+With [elm-program-test](https://elm-program-test.netlify.app/), you trigger clicks on for example buttons and form controls in your app to test that the correct thing happens. elm-program-test finds the elements to click by using standard HTML semantics. For example, in HTML you can use `<label for="my-id">` to connect a text label to a `<input id="my-id">`.
+
+In JavaScript, there are two ways of doing that: You can use `label.setAttribute("for", "my-id")` or `label.htmlFor = "my-id"`. That’s true for lots of attributes: You can either use `setAttribute` or set a property. Often setting one affects the other. Sometimes the property has a different name (as with `htmlFor`).
+
+In Elm, you can use `Html.Attributes.for "my-id"`. Does it set the attribute or the property? That’s an implementation detail, and it shouldn’t really matter. Spoiler: The original elm/html sets the `htmlFor` property, while my fork sets the `for` attribute. My fork prefers attributes in general, while the original prefers properties. This change is explained in detail in the section about changes in [elm/html](../README.md#elmhtml).
+
+elm-program-test uses elm-explorations/test’s `Test.Html.Selector` module to query for elements. For example, `Selector.attribute (Html.Attributes.for fieldId)`.
+
+On a technical level, `Html` values contain a list of “attributes” – which can be either actual attributes or properties. `Test.Html.Selector` looks in that list for the attribute or property that you give it. But it has no knowledge of the HTML spec. It _could_ have a list of all corresponding attributes and properties in the HTML spec, allowing you to write `Selector.attribute (Html.Attributes.attribute "for" "my-id")` to match `Html.label [ Html.Attributes.property "htmlFor" (Json.Encode.string "my-id") ] []` (or vice versa). But it doesn’t have such a list. So you have to use a property both when constructing your node and when querying it, or use an attribute both times. Usually, that doesn’t matter, though, because both you and elm-program-test use the pre-made functions in the `Html.Attributes` module and therefore always agree on attributes vs properties.
+
+However, that’s when [elm-css](https://github.com/rtfeldman/elm-css/) comes into the picture. It has an `Html.Styled.Attributes` module, which is near-identical to the regular `Html.Attributes` module.
+
+When you switch from the original elm/html to my fork, the functions in `Html.Attributes` are mostly going to use attributes. elm-program-test uses `Html.Attributes` and therefore asks elm-test to find elements using attributes. But the functions in `Html.Styled.Attributes` still mostly use properties. So elm-program-test won’t find the elements.
+
+The solution is to not only install the forked elm/html, but also the forked rtfeldman/elm-css: [omnibs/elm-css](https://github.com/rtfeldman/elm-css/pull/598). As mentioned in the section about changes in [elm/html](../README.md#elmhtml), that’s recommended anyway (even if you don’t use elm-program-test).
+
+Read more about [elm-css with elm-safe-virtual-dom in NoRedInk’s blog post](https://blog.noredink.com/post/800011916366020608/adopting-elm-safe-virtual-dom#:~:text=elm%2Dcss%20needs%20a%20fork%20too).
+
+As you can tell, it’s easy to pass around the blame here:
+
+- Maybe elm-explorations/test should know about HTML semantics.
+- Or maybe elm-program-test should try both the attribute version and the property version for all queries it makes.
+- Or maybe elm-css should depend on `Html.Attributes` so it doesn’t need to mirror exactly what it does under the hood.
+- And all of them could blame elm-safe-virtual-dom for switching from properties to attributes. But at least there are good reasons for it!
