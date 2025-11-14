@@ -9,7 +9,7 @@ _A robust virtual DOM for Elm._
 > - June 2025: Multiple people on Discord starts trying it out. They find a few bugs, which I never ran into at Insurello, but I manage to fix them quickly.
 > - July 2025: Some more bugs are fixed.
 > - September 2025: [StorageMart](https://www.storage-mart.com/) starts using this in production.
-> - November 2025: [NoRedInk](https://www.noredink.com/) starts using this in production, and write a [very helpful blog post on how they adopted it](https://blog.noredink.com/post/800011916366020608/adopting-elm-safe-virtual-dom). They go from thousands of virtual DOM related errors per day to zero. This also uncovers one more bug that is fixed.
+> - November 2025: [NoRedInk](https://www.noredink.com/) starts using this in production, and they write a [very helpful blog post on how they adopted it](https://blog.noredink.com/post/800011916366020608/adopting-elm-safe-virtual-dom). They go from thousands of virtual DOM related errors per day to zero. This also uncovers one more bug that is fixed.
 
 To use this project, you need to know:
 
@@ -279,7 +279,7 @@ What happens if you edit a file in there? Well … not much. Because of caching.
 1. Each package in `ELM_HOME` contains an `artifacts.dat` file (or `artifacts.x.dat` if you use Lamdera). This file isn’t downloaded, it’s created by the Elm compiler when compiling your project.
 2. The local `elm-stuff/` folder in your project.
 
-Something to keep in mind when making changes in the default `ELM_HOME` location (`~/.elm/`), is that it affects _all_ your Elm projects on your computer. This means that if you mess something up, you mess up _all_ your projects. On the other hand, if want my forks in all your projects, that can also be convenient. If you mess things up badly, you can just delete `ELM_HOME` and have the Elm compiler download everything from scratch.
+Something to keep in mind when making changes in the default `ELM_HOME` location (`~/.elm/`), is that it affects _all_ your Elm projects on your computer. This means that if you mess something up, you mess up _all_ your projects. On the other hand, if you want my forks in all your projects, that can also be convenient. If you mess things up badly, you can just delete `ELM_HOME` and have the Elm compiler download everything from scratch.
 
 Personally, I don’t like making “global” changes like that. I generally want my projects to be more “self contained”. So I recommend using a folder local to the project for `ELM_HOME` if you’re gonna mess around with the packages in there. (Though there is a downside to a local `ELM_HOME` – see the end of this section.)
 

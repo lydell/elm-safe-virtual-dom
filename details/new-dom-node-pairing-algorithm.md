@@ -26,7 +26,7 @@ var tNode = {
           domNode: li, // Reference to an <li> on the page.
           children: {},
         },
-        keyA: {
+        keyB: {
           domNode: li, // Reference to another <li> on the page.
           children: {},
         },
