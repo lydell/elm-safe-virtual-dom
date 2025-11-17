@@ -214,7 +214,7 @@ For Lamdera in production, follow [pull request #65](https://github.com/lamdera/
 
 TL;DR: You need to add one thing to the [elm-portal code](https://gist.github.com/wolfadex/45ae81f73c79a1c092cdba60aa218201).
 
-Chrome has shipped support for the new `Element.prototype.moveBefore` method, which allows moving an element on the page without “resetting” it (scroll position, animations, loaded state for iframes and video, etc.). My fork of the virtual-dom package uses this method if available. This means that `moveBefore` needs to be proxied by the elm-portal class. All you need to do is add this:
+Chrome and Firefox have shipped support for the new `Element.prototype.moveBefore` method, which allows moving an element on the page without “resetting” it (scroll position, animations, loaded state for iframes and video, etc.). My fork of the virtual-dom package uses this method if available. This means that `moveBefore` needs to be proxied by the elm-portal class. All you need to do is add this:
 
 ```js
 moveBefore(...args) {
