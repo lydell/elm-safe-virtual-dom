@@ -260,11 +260,13 @@ There are two future ways of installing:
 
 2. The [elm-janitor](https://github.com/elm-janitor/) project might merge the [pull requests](#the-pull-requests) I’ve made to the upstream Elm packages. If that happens, you can use their [apply-patches](https://github.com/elm-janitor/apply-patches) script to install (not just my forks, but fixes to other `elm/*` packages as well). Or whatever other way there is to install elm-janitor fixes.
 
-Finally, there are two ways for those who like living on the edge:
+Finally, there are a few ways for those who like living on the edge:
 
 1. The [Zokka](https://github.com/Zokka-Dev/zokka-compiler) fork of the Elm compiler supports overriding dependencies.
 
 2. [elm-sideload](https://github.com/jmpavlick/elm-sideload) is a CLI tool for sideloading/overriding Elm packages from your elm.json.
+
+3. [elm-wrap](https://github.com/dsimunic/elm-wrap) is a CLI wrapper around `elm` that adds support for custom package registries and policies.
 
 #### How to modify installed Elm packages
 
@@ -301,7 +303,7 @@ If you absolutely despise the idea of vendoring a bunch of code into your projec
 - Verifying that you got the same code as last time with a hash.
 - Caching the download.
 
-The [elm-sideload](https://github.com/jmpavlick/elm-sideload) tool attempts to do this.
+The [elm-sideload](https://github.com/jmpavlick/elm-sideload) and [elm-wrap](https://github.com/dsimunic/elm-wrap) tools attempt to do this.
 
 Finally, I mentioned that there’s a downside to having a local `ELM_HOME`. Your IDE. You’ll probably run your IDE with `ELM_HOME` unset, which means that it’ll go looking for packages in the default `~/.elm` location. That works fine, as long as `~/.elm` contains all the packages you need. If you add a new package in your project, it might only be installed in the _local_ `ELM_HOME`. Then your IDE might be unhappy. You can solve this by running one more install command so that the global `~/.elm` folder is updated too. Or you could try to configure your IDE to have the local `ELM_HOME` set. Or you could decided to patch the global `~/.elm` instead. There is no perfect solution.
 
