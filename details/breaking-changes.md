@@ -1,6 +1,6 @@
 # Breaking changes
 
-I haven’t changed the Elm interface at all (no added functions, no changed functions, no removed functions, or types). All behavior _except two details_ should be equivalent, except less buggy.
+I haven’t changed the Elm interface at all (no added functions, no changed functions, no removed functions, or types). All behavior _except the details below_ should be equivalent, except less buggy.
 
 The goal was to be 100 % backwards compatible. For some people, it is. For others, there are four changes that are in “breaking change territory” which can be summarized as:
 
