@@ -246,27 +246,25 @@ elm/html does not have any Kernel code, but on the other hand, lots of other pac
 
 Because of the above constraints, installing my forks requires a bit more creativity.
 
-There are currently three main ways to install them:
+There are currently a few ways to install them:
 
 1. A pretty comprehensive Node.js script called [replace-kernel-packages.mjs](#replace-kernel-packagesmjs).
 
 2. A simpler bash script – [lydell.bash](#lydellbash) – that was originally made for _testing_ my forks, so it cuts a few corners. It’s still uses the same approach as the Node.js script, and might be a simpler way to learn the technique if you’re familiar with bash.
 
-3. An example Nix setup, based on the comprehensive Node.js script above, called [elm-safe-vdom-nix](https://github.com/omnibs/elm-safe-vdom-nix).
+3. An example Nix setup, based on the comprehensive Node.js script above, called [elm-safe-vdom-nix](https://github.com/omnibs/elm-safe-vdom-nix), as well as another Nix solution described in a [Nix plus elm-safe-virtual-dom blog post](https://dev.to/dwayne/nix-pnpm-parcel-lydellelm-safe-virtual-dom-2lp6).
 
-There are two future ways of installing:
+4. The [elm-janitor](https://github.com/elm-janitor/) project has merged the [pull requests](#the-pull-requests) I’ve made to the upstream Elm packages. You can use their [apply-patches](https://github.com/elm-janitor/apply-patches) script to install them (not just my forks, but fixes to other `elm/*` packages as well). Or use whatever other way there is to install elm-janitor fixes.
 
-1. I’m collaborating with the [Lamdera Compiler](https://github.com/lamdera/compiler/). We’re experimenting with installing my forks automatically when using the Lamdera Compiler! Note that the Lamdera Compiler is open source and can be used for vanilla Elm apps, not just Lamdera apps. If this effort pans out, it’ll be by far the easiest way to install, since all you need to do is replace your `elm make` command with `lamdera make`.
-
-2. The [elm-janitor](https://github.com/elm-janitor/) project has merged the [pull requests](#the-pull-requests) I’ve made to the upstream Elm packages. You can use their [apply-patches](https://github.com/elm-janitor/apply-patches) script to install them (not just my forks, but fixes to other `elm/*` packages as well). Or use whatever other way there is to install elm-janitor fixes.
+I’m also collaborating with the [Lamdera Compiler](https://github.com/lamdera/compiler/). We’re experimenting with installing my forks automatically when using the Lamdera Compiler! Note that the Lamdera Compiler is open source and can be used for vanilla Elm apps, not just Lamdera apps. If this effort pans out, it’ll be by far the easiest way to install, since all you need to do is replace your `elm make` command with `lamdera make`.
 
 Finally, there are a few ways for those who like living on the edge:
 
-1. The [Zokka](https://github.com/Zokka-Dev/zokka-compiler) fork of the Elm compiler supports overriding dependencies.
+1. [elm-wrap](https://github.com/dsimunic/elm-wrap) is a CLI wrapper around `elm` that adds support for custom package registries and policies.
 
-2. [elm-sideload](https://github.com/jmpavlick/elm-sideload) is a CLI tool for sideloading/overriding Elm packages from your elm.json.
+2. The [Zokka](https://github.com/Zokka-Dev/zokka-compiler) fork of the Elm compiler supports overriding dependencies.
 
-3. [elm-wrap](https://github.com/dsimunic/elm-wrap) is a CLI wrapper around `elm` that adds support for custom package registries and policies.
+3. [elm-sideload](https://github.com/jmpavlick/elm-sideload) is a CLI tool for sideloading/overriding Elm packages from your elm.json.
 
 #### How to modify installed Elm packages
 
@@ -318,7 +316,6 @@ Download [replace-kernel-packages.mjs](./replace-kernel-packages.mjs) from this 
 3. Create a `source.txt` file in each fork folder. This file shows where the replacement package was copied from (for humans). Update the file each time you copy over new changes. This allows the script to detect when it needs to redo work and clear caches. I recommend putting a link to a commit in `source.txt`, such as `https://github.com/lydell/virtual-dom/commit/86a70be439e9a3c06e3d2911e701f350a5f19e86`. (If you feel really fancy, you could use git submodules or git subtrees, but don’t go into that rabbit hole unless you really want to. I wouldn’t recommend it myself.)
 
 4. Modify the start command for your project:
-
    - Make sure that the `replaceKernelPackages` function in `replace-kernel-packages.mjs` is run before your usual command. It copies `elm-kernel-replacements/elm-stuff/` into `elm-home/elm-stuff/`, replacing the mentioned packages.
 
    - Make sure that `ELM_HOME` is set to the local `elm-home/elm-stuff/` folder. This folder is supposed to be in the `.gitignore` file.
@@ -445,7 +442,6 @@ If you encounter a bug, it would be very helpful if you could:
 2. Try to reproduce the bug. If you can’t, you can still mention it on Discord for example, and I might have a clue since I know all the details of the code.
 
 3. Reduce your app down to the minimum that reproduces it. That is quite boring and tedious, but it helps a lot!
-
    - A small example is way easier to debug than a large page.
    - You save my time.
    - You might not be allowed to share your production code.
@@ -532,7 +528,6 @@ My fork of elm/browser is a mixed bag of small changes. I have made separate [pu
 - elm/browser is in charge of the Elm debugger. The debugger code has a bug where it passes `document` instead of `document.body` to the “virtualize” function, for the debugger window. Previously, that didn’t matter at all and happened to work anyway. With my fork of elm/virtual-dom, that caused the debugger window to be a blank page. I’ve fixed that (adding `.body`), but I also added compatibility for that bug in my virtual-dom fork, so it can be used without my elm/browser fork without breaking the debugger. Basically, I added `if (node === document) { node = document.body; }` as a workaround. So this change isn’t _technically_ needed, but it’s nice fixing problems “in the right place” too.
 
 - Speaking of the debugger, it has various bugs I’ve fixed:
-
   - In Firefox the debugger window background is dark if your computer is in dark mode, making it hard to read things in the debugger. I’ve set the background color of the debugger window explicitly to white, which is the recommendation for web pages anyway.
 
   - The pause button doesn’t do anything. Implementing it seems to have been forgotten – it always acts like a play button. I’ve implemented it.
