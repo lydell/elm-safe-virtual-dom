@@ -10,6 +10,7 @@ _A robust virtual DOM for Elm._
 > - July 2025: Some more bugs are fixed.
 > - September 2025: [StorageMart](https://www.storage-mart.com/) starts using this in production.
 > - November 2025: [NoRedInk](https://www.noredink.com/) starts using this in production, and they write a [very helpful blog post on how they adopted it](https://blog.noredink.com/post/800011916366020608/adopting-elm-safe-virtual-dom). They go from thousands of virtual DOM related errors per day to zero. This also uncovers one more bug that is fixed.
+> - June 2026: Several people at [Elm Camp](https://elm.camp) mention that they use this in production.
 
 To use this project, you need to know:
 
