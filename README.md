@@ -288,13 +288,13 @@ A simple thing to do is setting `ELM_HOME=elm-stuff/elm-home/`. Then your `ELM_H
 
 A downside of putting `ELM_HOME` inside `elm-stuff/`, is that the Elm Compiler sometimes instructs you to delete `elm-stuff/` when something has gone wrong with the files in there. If you do, you’ll also delete `elm-stuff/elm-home/`. That’s a bit annoying, because downloading all packages takes more time than just compiling without `elm-stuff/` cache, and requires Internet access. It also depends on the [package.elm-lang.org](https://package.elm-lang.org/) server being up. This can be solved in two ways.
 
-The first way is to learn to delete `elm-stuff/0.19.1/` instead of the full `elm-stuff/` folder. Than’s a good habit anyway, since `elm-stuff/` also contains elm-test and elm-review stuff that you don’t really need to delete ever.
+The first way is to learn to delete `elm-stuff/0.19.2/` instead of the full `elm-stuff/` folder. Than’s a good habit anyway, since `elm-stuff/` also contains elm-test and elm-review stuff that you don’t really need to delete ever.
 
 However, teaching that to all collaborators of the project might be difficult, so you might consider it worth putting your local `ELM_HOME` somewhere else. An obvious candidate is a local `elm-home/` folder. However, you’ll quickly notice that elm-format wants to format all the files in there. So `elm-home/elm-stuff/` is a better choice. elm-format ignores anything in folders called `elm-stuff/`, no matter where they are, or if they are “real” `elm-stuff/` folders or not.
 
 Ok, so now we’ve talked about how to make edits to Elm packages. But in reality we don’t want to make little edits here and there, we want to replace whole packages – with my forks in particular. How do we do that?
 
-I recommend copying the `elm.json` file and `src/` folders of my forks into your project and committing them. Then all you need to do is copying them into your local `ELM_HOME`, delete `artifacts.dat`, delete `elm-stuff/0.19.1/`, and set `ELM_HOME` when you then run the Elm compiler for your project. Copying the files from my forks is a very simple, robust and secure way of getting them into your project. It should work on your computer, your colleague’s computer, and on your continuous integration server. And it should keep working tomorrow. No surprises.
+I recommend copying the `elm.json` file and `src/` folders of my forks into your project and committing them. Then all you need to do is copying them into your local `ELM_HOME`, delete `artifacts.dat`, delete `elm-stuff/0.19.2/`, and set `ELM_HOME` when you then run the Elm compiler for your project. Copying the files from my forks is a very simple, robust and secure way of getting them into your project. It should work on your computer, your colleague’s computer, and on your continuous integration server. And it should keep working tomorrow. No surprises.
 
 If you absolutely despise the idea of vendoring a bunch of code into your project, you can experiment with downloading it as needed. If you pull code from my forks on GitHub, you might want to think about:
 
@@ -321,7 +321,7 @@ Download [replace-kernel-packages.mjs](./replace-kernel-packages.mjs) from this 
 
    - Make sure that `ELM_HOME` is set to the local `elm-home/elm-stuff/` folder. This folder is supposed to be in the `.gitignore` file.
 
-The script is pretty smart and only removes `artifacts.dat` and `elm-stuff/0.19.1/` if needed, avoiding unnecessarily slow compile times. It also has a bunch of validation checks, to make sure that nothing strange is going on.
+The script is pretty smart and only removes `artifacts.dat` and `elm-stuff/0.19.2/` if needed, avoiding unnecessarily slow compile times. It also has a bunch of validation checks, to make sure that nothing strange is going on.
 
 Here’s the expected folder structure for `elm-kernel-replacements`:
 
@@ -375,6 +375,9 @@ elm-kernel-replacements
                     └── VirtualDom.elm
 ```
 
+> [!NOTE]  
+> The script has been updated to Elm 0.19.2. If you use Elm 0.19.1, find and replace the version number.
+
 #### lydell.bash
 
 Download [lydell.bash](./lydell.bash) from this repo and follow the instructions inside.
@@ -388,6 +391,9 @@ The bash script:
 The script should work on macOS and Linux (but you might need to tweak it if you use some funky setup). On Windows, you can do the steps manually, or write your own script.
 
 Compared to [replace-kernel-packages.mjs](./replace-kernel-packages.mjs), `lydell.bash` does the bare minimum to get things working, and isn’t particularly smart.
+
+> [!NOTE]  
+> The script has been updated to Elm 0.19.2. If you use Elm 0.19.1, find and replace the version number.
 
 ## What to test
 
