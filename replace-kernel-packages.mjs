@@ -1,5 +1,7 @@
 /*
 
+This file is in the public domain. You may copy it and use it as you wish without attribution.
+
 This file copies elm-kernel-replacements/elm-stuff/ into elm-home/elm-stuff/.
 
 */

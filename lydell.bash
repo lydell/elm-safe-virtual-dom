@@ -1,3 +1,5 @@
+# This file is in the public domain. You may copy it and use it as you wish without attribution.
+
 # Exit on failures.
 set -e
 
