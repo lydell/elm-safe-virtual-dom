@@ -18,7 +18,7 @@ const ELM_HOME =
   process.env.ELM_HOME || path.join(ROOT, "elm-home", "elm-stuff");
 
 // Set this to the Elm version you use (at least 0.19.1).
-const ELM_VERSION = "0.19.2";
+const ELM_VERSION = "0.19.3";
 
 const ELM_HOME_PACKAGES = path.join(ELM_HOME, ELM_VERSION, "packages");
 

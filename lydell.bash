@@ -18,7 +18,7 @@ set -e
 # Then update the code below.
 
 # Set this to the Elm version you use (at least 0.19.1).
-elm_version=0.19.2
+elm_version=0.19.3
 
 # Set this to where you cloned lydell’s forked packages:
 clone_dir=TODO
