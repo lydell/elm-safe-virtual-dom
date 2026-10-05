@@ -17,12 +17,14 @@ const PATCH_DIR = path.join(ROOT, "elm-kernel-replacements", "elm-stuff");
 const ELM_HOME =
   process.env.ELM_HOME || path.join(ROOT, "elm-home", "elm-stuff");
 
-// Replace with 0.19.1 here and a few lines below if you use Elm 0.19.1.
-const ELM_HOME_PACKAGES = path.join(ELM_HOME, "0.19.2", "packages");
+// Set this to the Elm version you use (at least 0.19.1).
+const ELM_VERSION = "0.19.2";
+
+const ELM_HOME_PACKAGES = path.join(ELM_HOME, ELM_VERSION, "packages");
 
 // The parts of elm-stuff/ that the Elm compiler actually cares about.
 // Excludes elm-test and elm-review stuff.
-const ELM_STUFF = path.join(ROOT, "elm-stuff", "0.19.2");
+const ELM_STUFF = path.join(ROOT, "elm-stuff", ELM_VERSION);
 
 /**
  * @returns {void}

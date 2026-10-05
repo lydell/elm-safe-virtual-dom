@@ -6,9 +6,6 @@ set -e
 ###########################################################
 # You need to edit this section!
 #
-# NOTE: The script mentions "0.19.2" a few times below.
-# If you use Elm 0.19.1, replace it.
-#
 # First you need to clone lydell’s forked packages somewhere.
 # For example:
 #
@@ -19,6 +16,9 @@ set -e
 # git clone git@github.com:lydell/html.git
 #
 # Then update the code below.
+
+# Set this to the Elm version you use (at least 0.19.1).
+elm_version=0.19.2
 
 # Set this to where you cloned lydell’s forked packages:
 clone_dir=TODO
@@ -59,7 +59,7 @@ fi
 # Patch the packages in the the local ELM_HOME.
 for package_with_version in virtual-dom/1.0.5 browser/1.0.2 html/1.0.1; do
     package="$(dirname "$package_with_version")"
-    dir="$ELM_HOME/0.19.2/packages/elm/$package_with_version"
+    dir="$ELM_HOME/$elm_version/packages/elm/$package_with_version"
     mkdir -p "$dir"
     rm -rf "$dir/src" "$dir/artifacts.dat" "$dir/artifacts.x.dat"
     cp "$clone_dir/$package/elm.json" "$dir/elm.json"
@@ -67,9 +67,9 @@ for package_with_version in virtual-dom/1.0.5 browser/1.0.2 html/1.0.1; do
 done
 
 # Clear cache so that the patched stuff is used for sure.
-rm -rf elm-stuff/0.19.2 elm-stuff/elm-pages
+rm -rf "elm-stuff/$elm_version" elm-stuff/elm-pages
 # If you have elm-stuff/ folders in more places you might want to remove all of them:
-# find . -type d -path '*/elm-stuff/0.19.2' -exec rm -r {} +
+# find . -type d -path "*/elm-stuff/$elm_version" -exec rm -r {} +
 
 # Run your usual startup command with ELM_HOME set.
 run
