@@ -7,7 +7,7 @@ The goal was to be 100 % backwards compatible. For some people, it is. For other
 - [Elm no longer empties the mount element](#elm-no-longer-empties-the-mount-element)
 - [Properties are diffed against the _real_ DOM](#properties-are-diffed-against-the-real-dom)
 - [Setters should have getters on custom elements](#setters-should-have-getters-on-custom-elements)
-- [elm-program-test stops working when using elm-css](#elm-program-test-stops-working-when-using-elm-css)
+- [Problems with elm-css](#problems-with-elm-css)
 
 ## Elm no longer empties the mount element
 
@@ -323,7 +323,14 @@ My fork takes a different approach. It _always_ compares _all_ properties to the
 
 All in all, make sure that your setters also have getters on your custom elements, to avoid unnecessary work on each render.
 
-## elm-program-test stops working when using elm-css
+## Problems with elm-css
+
+If you use one of the elm-css packages, you might run into these two issues, both of which are caused by the same underlying thing – properties vs attributes:
+
+- elm-program-test stops working when using elm-css.
+- Mixing `Html.Styled.Attributes.class` and `Html.Attributes.class << Html.Styled.Attributes.fromUnstyled` can result in missing classes.
+
+If you don’t use elm-program-test and never mix elm-css’ `class` with the elm/html’s `class`, you don’t need to worry about anything. But if you do, the TL;DR is to install [omnibs/elm-css](https://github.com/rtfeldman/elm-css/pull/598).
 
 With [elm-program-test](https://elm-program-test.netlify.app/), you trigger clicks on for example buttons and form controls in your app to test that the correct thing happens. elm-program-test finds the elements to click by using standard HTML semantics. For example, in HTML you can use `<label for="my-id">` to connect a text label to a `<input id="my-id">`.
 
@@ -339,7 +346,31 @@ However, that’s when [elm-css](https://github.com/rtfeldman/elm-css/) comes in
 
 When you switch from the original elm/html to my fork, the functions in `Html.Attributes` are mostly going to use attributes. elm-program-test uses `Html.Attributes` and therefore asks elm-test to find elements using attributes. But the functions in `Html.Styled.Attributes` still mostly use properties. So elm-program-test won’t find the elements.
 
-The solution is to not only install the forked elm/html, but also the forked rtfeldman/elm-css: [omnibs/elm-css](https://github.com/rtfeldman/elm-css/pull/598). As mentioned in the section about changes in [elm/html](../README.md#elmhtml), that’s recommended anyway (even if you don’t use elm-program-test).
+Similarly, `Html.Styled.Attributes.class` is implemented using the `className` _property,_ while my fork of elm/html implements `Html.Attributes.class` using the `class` _attribute._ The problem arises if you mix both:
+
+```elm
+Html.Styled.div
+    [ Html.Styled.Attributes.class "one"
+    , Html.Styled.Attributes.class "two"
+    , Html.Styled.Attributes.fromUnstyled (Html.Attributes.class "alpha")
+    , Html.Styled.Attributes.fromUnstyled (Html.Attributes.class "beta")
+    ]
+```
+
+With my fork of elm/html, the above will result in either the classes `"one two"` or `"alpha beta"`. It’s undefined which wins (and the answer can be different for the first render and for updates). That’s because one of the functions uses `className` and one uses `class`, and the two are _not_ merged together. That has actually never been the case – the following is problematic even without my forks:
+
+```elm
+Html.div
+    [ Html.Attributes.property "className" (Json.Encode.string "one")
+    , Html.Attributes.property "className" (Json.Encode.string "two")
+    , Html.Attributes.attribute "class" "alpha"
+    , Html.Attributes.attribute "class" "beta"
+    ]
+```
+
+The above is what happens behind the scenes when you mix elm-css’ `class` with the elm/html’s `class`. `className` and `class` have never been merged, and it’s always been undefined which one wins. (As you might have realized, this problem isn’t unique to elm-css. Any package that uses `property "className"` can trip you up like this. Same thing if you use `property "className"` in your own code.)
+
+The solution to both the elm-program-test problem and the `class` problem, is to not only install the forked elm/html, but also the forked rtfeldman/elm-css: [omnibs/elm-css](https://github.com/rtfeldman/elm-css/pull/598). As mentioned in the section about changes in [elm/html](../README.md#elmhtml), that’s recommended anyway (even if you don’t use elm-program-test).
 
 Read more about [elm-css with elm-safe-virtual-dom in NoRedInk’s blog post](https://blog.noredink.com/post/800011916366020608/adopting-elm-safe-virtual-dom#:~:text=elm%2Dcss%20needs%20a%20fork%20too).
 
@@ -349,3 +380,4 @@ As you can tell, it’s easy to pass around the blame here:
 - Or maybe elm-program-test should try both the attribute version and the property version for all queries it makes.
 - Or maybe elm-css should depend on `Html.Attributes` so it doesn’t need to mirror exactly what it does under the hood.
 - And all of them could blame elm-safe-virtual-dom for switching from properties to attributes. But at least there are good reasons for it!
+- And maybe my fork of elm/virtual-dom should merge `className` and `class`. But would it be weird that `property "className"` then would set the _attribute_ `class`?

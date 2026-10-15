@@ -93,7 +93,7 @@ The goal was to be 100 % backwards compatible. For some people, it is. For other
 - [Elm no longer empties the mount element](#elm-no-longer-empties-the-mount-element)
 - [Properties are diffed against the _real_ DOM](#properties-are-diffed-against-the-real-dom)
 - [Setters should have getters on custom elements](#setters-should-have-getters-on-custom-elements)
-- [elm-program-test stops working when using elm-css](#elm-program-test-stops-working-when-using-elm-css)
+- [Problems with elm-css](#problems-with-elm-css)
 
 #### Elm no longer empties the mount element
 
@@ -149,9 +149,12 @@ When using [Custom Elements](https://guide.elm-lang.org/interop/custom_elements)
 
 Otherwise `myProperty` is going to be set on every render, even if the value for it hasn’t changed on the Elm side! Read all about it in the [longer section about setters and getters](./details/breaking-changes.md#setters-should-have-getters-on-custom-elements).
 
-#### elm-program-test stops working when using elm-css
+#### Problems with elm-css
 
-When you install the forked elm/html, elm-program-test won’t find elements anymore if you use elm-css.
+When you install the forked elm/html:
+
+- elm-program-test won’t find elements anymore if you use elm-css.
+- You can end up with missing classes if you mix elm-css’ `class` with the elm/html’s `class`.
 
 The solution is to not only install the forked elm/html, but also the forked rtfeldman/elm-css: [omnibs/elm-css](https://github.com/rtfeldman/elm-css/pull/598). As mentioned in the section about changes in [elm/html](#elmhtml), that’s recommended anyway (even if you don’t use elm-program-test).
 
