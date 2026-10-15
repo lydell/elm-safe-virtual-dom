@@ -20,7 +20,7 @@ var tNode = {
       children: {},
     },
     1: {
-      domNode: ul, // Reference to an <ul> on the page.
+      domNode: ul, // Reference to a <ul> on the page.
       children: {
         keyA: {
           domNode: li, // Reference to an <li> on the page.

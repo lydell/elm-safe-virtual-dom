@@ -56,7 +56,7 @@ if test "$clone_dir" = TODO; then
     exit 1
 fi
 
-# Patch the packages in the the local ELM_HOME.
+# Patch the packages in the local ELM_HOME.
 for package_with_version in virtual-dom/1.0.5 browser/1.0.2 html/1.0.1; do
     package="$(dirname "$package_with_version")"
     dir="$ELM_HOME/$elm_version/packages/elm/$package_with_version"

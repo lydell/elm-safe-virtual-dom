@@ -8,12 +8,12 @@ Virtualization in elm/virtual-dom has a bunch of problems:
 
 - Attributes vs properties. It virtualizes all attributes on the element as attributes in Elm (`Html.Attributes.attribute`), but most string attributes are actually implemented as _properties_ in Elm (`Html.Attributes.property`). I’ve fixed this by changing elm/html to mostly use attributes instead (read more about it in the elm/html section below).
 
-- Functions in `Html.Attributes` that take a `Bool` still need to be implemented as _properties._ However, some of them have different casing as an attribute vs an a property, such as `readonly` vs `readOnly`. I’ve went through all boolean attributes and added a lookup object of the non-esoteric ones with different casing.
+- Functions in `Html.Attributes` that take a `Bool` still need to be implemented as _properties._ However, some of them have different casing as an attribute vs a property, such as `readonly` vs `readOnly`. I’ve gone through all boolean attributes and added a lookup object of the non-esoteric ones with different casing.
 
-- The `style` attribute needs to be turned back to each `Html.Attribute.style` call, and not be a single `style` attribute. My fork solves this.
+- The `style` attribute needs to be turned back to each `Html.Attributes.style` call, and not be a single `style` attribute. My fork solves this.
 
 - It doesn’t virtualize namespaced elements and attributes correctly (needed for SVG).
 
 - It does not add click listeners on `<a>` elements for `Browser.application`.
 
-- My fork only virtualizes text nodes, and elements with the `data-elm` attribute. This allows third-party scripts to add elements to (for example) `<body>` before Elm initializing, with having Elm remove them during initialization.
+- My fork only virtualizes text nodes, and elements with the `data-elm` attribute. This allows third-party scripts to add elements to (for example) `<body>` before Elm initializes, without having Elm remove them during initialization.

@@ -17,7 +17,7 @@ This results in:
 
 - If you have an element like `<p>Looks like JavaScript hasn’t run?</p>` and expect Elm to remove it, that won’t happen now. To fix, you can put `data-elm` on it: `<p data-elm>`.
 - If you use CSS selectors like `body > :first-child`, `body > :last-child` or `h1 + p`, they might not apply, since your `<script>` tags in `<body>` might still be around, and might be mixed with the elements rendered by Elm.
-- If you do server-side rendering and expect Elm to hydrate/virtualize/adopt/take charge over the server-side rendered HTML, you need to make sure that all elements (except the root element) has `data-elm`. If you create the HTML with Elm (such as with elm-pages), you’ll get this automatically when you use my forks. But if you create elements some other way, make sure they have `data-elm`.
+- If you do server-side rendering and expect Elm to hydrate/virtualize/adopt/take charge over the server-side rendered HTML, you need to make sure that all elements (except the root element) have `data-elm`. If you create the HTML with Elm (such as with elm-pages), you’ll get this automatically when you use my forks. But if you create elements some other way, make sure they have `data-elm`.
 
 ### Comprehensive `Browser.application` example
 
@@ -198,7 +198,7 @@ With my forks you end up with:
 </body>
 ```
 
-Probably the easiest solution in this case is to slap `data-elm` to that original `<p>` tag:
+Probably the easiest solution in this case is to slap `data-elm` on that original `<p>` tag:
 
 ```html
 <body>
@@ -251,7 +251,7 @@ When server-side rendering, make sure that your HTML doesn’t have any extra wh
 
 Note how there is no line break after `<body>` and how all the elements rendered by Elm are on just one ugly line, and how all of those elements have `data-elm`.
 
-Having no extra whitespace directly after `<body>` is extra important, since it’ll make the first diff with `view` off-by-one and effectively re-render the whole page. This is because my forks assumes that _all_ text nodes should be virtualized. See the “Comprehensive `Browser.application` example” above for more details around this.
+Having no extra whitespace directly after `<body>` is extra important, since it’ll make the first diff with `view` off-by-one and effectively re-render the whole page. This is because my forks assume that _all_ text nodes should be virtualized. See the “Comprehensive `Browser.application` example” above for more details around this.
 
 It’s OK to have extra elements before or after the Elm elements. It’s also OK to have extra whitespace _after_ all the Elm elements.
 
@@ -330,7 +330,7 @@ If you use one of the elm-css packages, you might run into these two issues, bot
 - elm-program-test stops working when using elm-css.
 - Mixing `Html.Styled.Attributes.class` and `Html.Attributes.class << Html.Styled.Attributes.fromUnstyled` can result in missing classes.
 
-If you don’t use elm-program-test and never mix elm-css’ `class` with the elm/html’s `class`, you don’t need to worry about anything. But if you do, the TL;DR is to install [omnibs/elm-css](https://github.com/rtfeldman/elm-css/pull/598).
+If you don’t use elm-program-test and never mix elm-css’ `class` with elm/html’s `class`, you don’t need to worry about anything. But if you do, the TL;DR is to install [omnibs/elm-css](https://github.com/rtfeldman/elm-css/pull/598).
 
 With [elm-program-test](https://elm-program-test.netlify.app/), you trigger clicks on for example buttons and form controls in your app to test that the correct thing happens. elm-program-test finds the elements to click by using standard HTML semantics. For example, in HTML you can use `<label for="my-id">` to connect a text label to a `<input id="my-id">`.
 
@@ -368,7 +368,7 @@ Html.div
     ]
 ```
 
-The above is what happens behind the scenes when you mix elm-css’ `class` with the elm/html’s `class`. `className` and `class` have never been merged, and it’s always been undefined which one wins. (As you might have realized, this problem isn’t unique to elm-css. Any package that uses `property "className"` can trip you up like this. Same thing if you use `property "className"` in your own code.)
+The above is what happens behind the scenes when you mix elm-css’ `class` with elm/html’s `class`. `className` and `class` have never been merged, and it’s always been undefined which one wins. (As you might have realized, this problem isn’t unique to elm-css. Any package that uses `property "className"` can trip you up like this. Same thing if you use `property "className"` in your own code.)
 
 The solution to both the elm-program-test problem and the `class` problem, is to not only install the forked elm/html, but also the forked rtfeldman/elm-css: [omnibs/elm-css](https://github.com/rtfeldman/elm-css/pull/598). As mentioned in the section about changes in [elm/html](../README.md#elmhtml), that’s recommended anyway (even if you don’t use elm-program-test).
 

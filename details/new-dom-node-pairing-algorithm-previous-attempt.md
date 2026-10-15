@@ -22,7 +22,7 @@ The first important thing to realize is that `Html.map` does not “do” anythi
 
 `Html.Lazy` also creates new nodes wrapping other nodes. It isn’t associated with a DOM node either.
 
-But `Text` (`Html.text`), `Element` (for example `Html.div`) and `Keyed` (for example `Html.Keyed.ul`) all _are_ associated with a DOM node. Each one of those are supposed to have (or get) a corresponding DOM node on the page. The idea is to store the DOM on the virtual DOM node itself, so it always has a reference to it.
+But `Text` (`Html.text`), `Element` (for example `Html.div`) and `Keyed` (for example `Html.Keyed.ul`) all _are_ associated with a DOM node. Each one of those are supposed to have (or get) a corresponding DOM node on the page. The idea is to store the DOM node on the virtual DOM node itself, so it always has a reference to it.
 
 As I said before, the `Html msg` type isn’t implemented in Elm, but in JavaScript. So an `Element` looks conceptually like this:
 
@@ -35,7 +35,7 @@ var node = {
 };
 ```
 
-The idea is extend that to:
+The idea is to extend that to:
 
 ```js
 var node = {
@@ -87,7 +87,7 @@ view model =
         ]
 ```
 
-In a more realistic example, there’d be something next to the edit icons as well, and they’d be buttons that edit those things, but let's keep it simple. What happens when you refer to `editIcon` multiple times? Well, the above will be represented roughly like this in JavaScript:
+In a more realistic example, there’d be something next to the edit icons as well, and they’d be buttons that edit those things, but let’s keep it simple. What happens when you refer to `editIcon` multiple times? Well, the above will be represented roughly like this in JavaScript:
 
 ```js
 var editIcon = {
@@ -183,7 +183,7 @@ This design imposes a rule: On each render, we always have to recurse through th
 
 - When two virtual DOM nodes are for different elements (one is a `<div>`, the other is a `<p>`), both implementations bail out, by removing the old DOM node completely and then rendering the new one fresh. This is just like a removal followed by an insertion, so my fork needs to recurse through the old virtual DOM node here too, while the original elm/virtual-dom does not need that.
 
-- Finally, lazy nodes. The first thing `lazy` does is that your Elm function won’t be called unless the arguments change. The second thing is the virtual DOM diffing. If the arguments haven’t changed, then we’ll use the same virtual DOM as last time, which then by definition is unchanged. The original elm/virtual-dom then doesn’t need to look through that virtual DOM node at all, it you can just move on to the next. My fork still needs to recurse through it, for two reasons. The first one is similar to node removals: To increment the `i` counter in case a virtual DOM node used inside the lazy node is used again later. The second reason is due to `Html.map` – see the section about `Html.map`. Just like when recursing removed virtual DOM nodes, recursing lazy nodes also has a fast path function that only increments the `i` counter and makes sure event listeners are up-to-date. This means that `lazy` is slightly less lazy with my fork.
+- Finally, lazy nodes. The first thing `lazy` does is that your Elm function won’t be called unless the arguments change. The second thing is the virtual DOM diffing. If the arguments haven’t changed, then we’ll use the same virtual DOM as last time, which then by definition is unchanged. The original elm/virtual-dom then doesn’t need to look through that virtual DOM node at all, it can just move on to the next. My fork still needs to recurse through it, for two reasons. The first one is similar to node removals: To increment the `i` counter in case a virtual DOM node used inside the lazy node is used again later. The second reason is due to `Html.map` – see the section about `Html.map`. Just like when recursing removed virtual DOM nodes, recursing lazy nodes also has a fast path function that only increments the `i` counter and makes sure event listeners are up-to-date. This means that `lazy` is slightly less lazy with my fork.
 
 The shape closest to reality of virtual DOM nodes is actually this:
 
@@ -220,6 +220,6 @@ In summary, we started at the beautifully simple idea: “What if virtual DOM no
 
 In addition to the DOM node arrays, we have an `i` index that keeps track of how far into the DOM node arrays we are. And we have `renderedAt` which avoids having to reset `i` and “move new to old” in a separate tree traversal after each render (it’s instead done during the _next_ render).
 
-So, why did I abandon this approach in the end, after putting this much effort in it? Well, I ran into a problem that was the straw the broke the camel’s back, and then was lucky to think of a much simpler and more robust solution.
+So, why did I abandon this approach in the end, after putting this much effort in it? Well, I ran into a problem that was the straw that broke the camel’s back, and then was lucky to think of a much simpler and more robust solution.
 
 Earlier in this document, I mentioned how on each render, we always have to recurse through the _entire_ old virtual DOM **– in depth first order –** to “discover” all uses of each virtual DOM node, and increase that `i` counter each time. Turns out that’s really bad for `Keyed` nodes, because there you _don’t_ want to visit everything in order! Many times we need to jump around among the children, to match re-ordered elements with the same key. I had implemented [a nice keyed algorithm](./html-keyed.md), not realizing it wouldn’t quite work since it didn’t visit everything in the correct order. This was the final issue before I figured out the new way of doing things.

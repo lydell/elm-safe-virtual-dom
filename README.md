@@ -5,8 +5,8 @@ _A robust virtual DOM for Elm._
 > [!IMPORTANT]  
 > Can this be used in production? Yes! Here’s a little timeline:
 >
-> - May 2025: After a careful gradual rollout during May 2025, [Insurello](https://careers.insurello.se/) starts using this in production. With a couple of thousand unique users per day, there haven’t been a single error reported automatically or to customer service.
-> - June 2025: Multiple people on Discord starts trying it out. They find a few bugs, which I never ran into at Insurello, but I manage to fix them quickly.
+> - May 2025: After a careful gradual rollout during May 2025, [Insurello](https://careers.insurello.se/) starts using this in production. With a couple of thousand unique users per day, there hasn’t been a single error reported automatically or to customer service.
+> - June 2025: Multiple people on Discord start trying it out. They find a few bugs, which I never ran into at Insurello, but I manage to fix them quickly.
 > - July 2025: Some more bugs are fixed.
 > - September 2025: [StorageMart](https://www.storage-mart.com/) starts using this in production.
 > - November 2025: [NoRedInk](https://www.noredink.com/) starts using this in production, and they write a [very helpful blog post on how they adopted it](https://blog.noredink.com/post/800011916366020608/adopting-elm-safe-virtual-dom). They go from thousands of virtual DOM related errors per day to zero. This also uncovers one more bug that is fixed.
@@ -103,7 +103,7 @@ This results in:
 
 - If you have an element like `<p>Looks like JavaScript hasn’t run?</p>` and expect Elm to remove it, that won’t happen now. To fix, you can put `data-elm` on it: `<p data-elm>`.
 - If you use CSS selectors like `body > :first-child`, `body > :last-child` or `h1 + p`, they might not apply, since your `<script>` tags in `<body>` might still be around, and might be mixed with the elements rendered by Elm.
-- If you do server-side rendering and expect Elm to hydrate/virtualize/adopt/take charge over the server-side rendered HTML, you need to make sure that all elements (except the root element) has `data-elm`. If you create the HTML with Elm (such as with elm-pages), you’ll get this automatically when you use my forks. But if you create elements some other way, make sure they have `data-elm`.
+- If you do server-side rendering and expect Elm to hydrate/virtualize/adopt/take charge over the server-side rendered HTML, you need to make sure that all elements (except the root element) have `data-elm`. If you create the HTML with Elm (such as with elm-pages), you’ll get this automatically when you use my forks. But if you create elements some other way, make sure they have `data-elm`.
 
 Read more:
 
@@ -154,7 +154,7 @@ Otherwise `myProperty` is going to be set on every render, even if the value for
 When you install the forked elm/html:
 
 - elm-program-test won’t find elements anymore if you use elm-css.
-- You can end up with missing classes if you mix elm-css’ `class` with the elm/html’s `class`.
+- You can end up with missing classes if you mix elm-css’ `class` with elm/html’s `class`.
 
 The solution is to not only install the forked elm/html, but also the forked rtfeldman/elm-css: [omnibs/elm-css](https://github.com/rtfeldman/elm-css/pull/598). As mentioned in the section about changes in [elm/html](#elmhtml), that’s recommended anyway (even if you don’t use elm-program-test).
 
@@ -254,7 +254,7 @@ There are currently a few ways to install them:
 
 1. A pretty comprehensive Node.js script called [replace-kernel-packages.mjs](#replace-kernel-packagesmjs).
 
-2. A simpler bash script – [lydell.bash](#lydellbash) – that was originally made for _testing_ my forks, so it cuts a few corners. It’s still uses the same approach as the Node.js script, and might be a simpler way to learn the technique if you’re familiar with bash.
+2. A simpler bash script – [lydell.bash](#lydellbash) – that was originally made for _testing_ my forks, so it cuts a few corners. It still uses the same approach as the Node.js script, and might be a simpler way to learn the technique if you’re familiar with bash.
 
 3. An example Nix setup, based on the comprehensive Node.js script above, called [elm-safe-vdom-nix](https://github.com/omnibs/elm-safe-vdom-nix), as well as another Nix solution described in a [Nix plus elm-safe-virtual-dom blog post](https://dev.to/dwayne/nix-pnpm-parcel-lydellelm-safe-virtual-dom-2lp6).
 
@@ -291,13 +291,13 @@ A simple thing to do is setting `ELM_HOME=elm-stuff/elm-home/`. Then your `ELM_H
 
 A downside of putting `ELM_HOME` inside `elm-stuff/`, is that the Elm Compiler sometimes instructs you to delete `elm-stuff/` when something has gone wrong with the files in there. If you do, you’ll also delete `elm-stuff/elm-home/`. That’s a bit annoying, because downloading all packages takes more time than just compiling without `elm-stuff/` cache, and requires Internet access. It also depends on the [package.elm-lang.org](https://package.elm-lang.org/) server being up. This can be solved in two ways.
 
-The first way is to learn to delete `elm-stuff/0.19.*/` instead of the full `elm-stuff/` folder. Than’s a good habit anyway, since `elm-stuff/` also contains elm-test and elm-review stuff that you don’t really need to delete ever.
+The first way is to learn to delete `elm-stuff/0.19.*/` instead of the full `elm-stuff/` folder. That’s a good habit anyway, since `elm-stuff/` also contains elm-test and elm-review stuff that you don’t really need to delete ever.
 
 However, teaching that to all collaborators of the project might be difficult, so you might consider it worth putting your local `ELM_HOME` somewhere else. An obvious candidate is a local `elm-home/` folder. However, you’ll quickly notice that elm-format wants to format all the files in there. So `elm-home/elm-stuff/` is a better choice. elm-format ignores anything in folders called `elm-stuff/`, no matter where they are, or if they are “real” `elm-stuff/` folders or not.
 
 Ok, so now we’ve talked about how to make edits to Elm packages. But in reality we don’t want to make little edits here and there, we want to replace whole packages – with my forks in particular. How do we do that?
 
-I recommend copying the `elm.json` file and `src/` folders of my forks into your project and committing them. Then all you need to do is copying them into your local `ELM_HOME`, delete `artifacts.dat`, delete `elm-stuff/0.19.*/`, and set `ELM_HOME` when you then run the Elm compiler for your project. Copying the files from my forks is a very simple, robust and secure way of getting them into your project. It should work on your computer, your colleague’s computer, and on your continuous integration server. And it should keep working tomorrow. No surprises.
+I recommend copying the `elm.json` file and `src/` folders of my forks into your project and committing them. Then all you need to do is copy them into your local `ELM_HOME`, delete `artifacts.dat`, delete `elm-stuff/0.19.*/`, and set `ELM_HOME` when you then run the Elm compiler for your project. Copying the files from my forks is a very simple, robust and secure way of getting them into your project. It should work on your computer, your colleague’s computer, and on your continuous integration server. And it should keep working tomorrow. No surprises.
 
 If you absolutely despise the idea of vendoring a bunch of code into your project, you can experiment with downloading it as needed. If you pull code from my forks on GitHub, you might want to think about:
 
@@ -307,7 +307,7 @@ If you absolutely despise the idea of vendoring a bunch of code into your projec
 
 The [elm-sideload](https://github.com/jmpavlick/elm-sideload) and [elm-wrap](https://github.com/dsimunic/elm-wrap) tools attempt to do this.
 
-Finally, I mentioned that there’s a downside to having a local `ELM_HOME`. Your IDE. You’ll probably run your IDE with `ELM_HOME` unset, which means that it’ll go looking for packages in the default `~/.elm` location. That works fine, as long as `~/.elm` contains all the packages you need. If you add a new package in your project, it might only be installed in the _local_ `ELM_HOME`. Then your IDE might be unhappy. You can solve this by running one more install command so that the global `~/.elm` folder is updated too. Or you could try to configure your IDE to have the local `ELM_HOME` set. Or you could decided to patch the global `~/.elm` instead. There is no perfect solution.
+Finally, I mentioned that there’s a downside to having a local `ELM_HOME`. Your IDE. You’ll probably run your IDE with `ELM_HOME` unset, which means that it’ll go looking for packages in the default `~/.elm` location. That works fine, as long as `~/.elm` contains all the packages you need. If you add a new package in your project, it might only be installed in the _local_ `ELM_HOME`. Then your IDE might be unhappy. You can solve this by running one more install command so that the global `~/.elm` folder is updated too. Or you could try to configure your IDE to have the local `ELM_HOME` set. Or you could decide to patch the global `~/.elm` instead. There is no perfect solution.
 
 #### replace-kernel-packages.mjs
 
@@ -389,7 +389,7 @@ The bash script:
 
 - Instructs you to clone my forks.
 - Instructs you to type in the command you use to run your app.
-- Runs that command with `ELM_HOME` set `elm-stuff/elm-home/` (local to your app) and copies files from my forks into it.
+- Runs that command with `ELM_HOME` set to `elm-stuff/elm-home/` (local to your app) and copies files from my forks into it.
 
 The script should work on macOS and Linux (but you might need to tweak it if you use some funky setup). On Windows, you can do the steps manually, or write your own script.
 
@@ -409,7 +409,7 @@ Here are some things to test before shipping to production:
 
 Here are some specific things that I have tested quite a bit myself, but would like to see tested more:
 
-- Google Translate work? Does it display usable text after updates to the DOM? Can you find a language that breaks down?
+- Does Google Translate work? Does it display usable text after updates to the DOM? Can you find a language that breaks down?
 - Does Grammarly work?
 - Do other browser extensions work?
 - Do your third-party scripts work?
@@ -423,20 +423,20 @@ Here are some things that people on Discord have tested a lot:
 - Use of [elm-program-test](https://elm.dmy.fr/packages/avh4/elm-program-test/latest/), or any HTML based testing in elm-test.
 - elm-pages.
 
-I’m also looking for testing in apps with heavy use of:
+I’m also looking for testing in apps with:
 
 - Heavy or important use of `Html.Lazy`.
 - Use of [elm-explorations/webgl](https://elm.dmy.fr/packages/elm-explorations/webgl/latest/).
 - Use of [elm-explorations/markdown](https://elm.dmy.fr/packages/elm-explorations/markdown/latest/).
 - Crazy, weird, edge-case:y things.
 
-It’s good testing in multiple environments:
+It’s good to test in multiple environments:
 
 - Different operating systems.
 - Different devices (computers, tablets, phones).
 - Different browsers.
 
-When you’re done testing, take a break and then test the same amount again, if you have the time. If you’ll find a bug, it’ll probably be while doing the most unexpected little thing.
+When you’re done testing, take a break and then test the same amount again, if you have the time. If you find a bug, it’ll probably be while doing the most unexpected little thing.
 
 ## How to provide feedback
 
@@ -484,7 +484,7 @@ Changes:
 - A [new algorithm for pairing virtual DOM nodes](./details/new-dom-node-pairing-algorithm.md) with the corresponding real DOM nodes, that should be robust against browser extensions and third-party scripts. It is in the code for the old algorithm where most crashes happen. [elm/html#44](https://github.com/elm/html/issues/44) [elm/browser#121](https://github.com/elm/browser/issues/121) [elm/browser#66](https://github.com/elm/browser/issues/66) [elm/virtual-dom#147](https://github.com/elm/virtual-dom/issues/147)
 - [Support for the page being translated](./details/page-translation-support.md), for example Google Translate. This requires the above change (being robust), and then a little bit of extra code to make sure that translated text isn’t left behind on the page, and so that translated text that should change actually updates.
 - The `Html.map` bug where messages of the wrong type can appear in `update` functions is fixed, by completely [changing how `Html.map` works](./details/html-map.md). The old code was incredibly difficult to understand, but could theoretically skip more work in some cases. The new code is instead very simple, leaving little room for errors. [elm/virtual-dom#105](https://github.com/elm/virtual-dom/issues/105) [elm/virtual-dom#162](https://github.com/elm/virtual-dom/issues/162) [elm/virtual-dom#171](https://github.com/elm/virtual-dom/issues/171) [elm/virtual-dom#166 (PR)](https://github.com/elm/virtual-dom/pull/166) [elm/html#160](https://github.com/elm/html/issues/160) [elm/compiler#2069](https://github.com/elm/compiler/issues/2069)
-- The above `Html.map` improvements removes the need for the hidden `_Json_equality` function in elm/json, which was buggy. [elm/json#13](https://github.com/elm/json/issues/13) [elm/json#15](https://github.com/elm/json/issues/15) [elm/core#904](https://github.com/elm/core/issues/904) [elm/json#32 (PR)](https://github.com/elm/json/pull/32)
+- The above `Html.map` improvements remove the need for the hidden `_Json_equality` function in elm/json, which was buggy. [elm/json#13](https://github.com/elm/json/issues/13) [elm/json#15](https://github.com/elm/json/issues/15) [elm/core#904](https://github.com/elm/core/issues/904) [elm/json#32 (PR)](https://github.com/elm/json/pull/32)
 - [Improved `Html.Keyed`](./details/html-keyed.md). The algorithm is slightly smarter without losing performance, and uses the new `Element.prototype.moveBefore` API, if available, which allows moving an element on the page without “resetting” it (scroll position, animations, loaded state for iframes and video, etc.). [elm/virtual-dom#175](https://github.com/elm/virtual-dom/issues/175) [elm/virtual-dom#178](https://github.com/elm/virtual-dom/issues/178) [elm/virtual-dom#183](https://github.com/elm/virtual-dom/issues/183)
 - [“Virtualization” is now completed](./details/virtualization.md), making it usable in practice, for example for elm-pages. This means that server-side rendered pages no longer have to redraw the whole page when Elm initializes.
 - CSS custom properties, like `--primary-color`, can now be set with `Html.Attributes.style "--primary-color" "salmon"`. [elm/html#177](https://github.com/elm/html/issues/177)
@@ -549,7 +549,7 @@ My fork of elm/browser is a mixed bag of small changes. I have made separate [pu
 
 - You might have noticed that when Elm’s virtual DOM crashes, you get an error in the browser console many times per second. This is because Elm generally draws on the next animation frame using `requestAnimationFrame`, and if it crashes during rendering it gets stuck in an infinite `requestAnimationFrame` loop. That’s really annoying. When changing the code to not get caught in a loop if there is an exception, I also noticed that the whole `requestAnimationFrame` was a bit off. Basically, if you also subscribe to `Browser.Events.onAnimationFrame`, you could end up with `update` and `view` being 1 frame out of sync, and some frames could be skipped. I made a [demo showing these animation frame oddities](https://lydell.github.io/elm-animation-frame-oddities/). My fork fixes that, except the demo cases where the animation frames come via a port – I don’t think that is solvable.
 
-- Finally, there’s a bug where clicks on `<a>` elements _without_ `href` still end up producing a `LinkClicked` messages, even though such elements shouldn’t be clickable. I’ve fixed that. (But note that this fix doesn’t work during development with elm-watch – see the [Compatibility with tooling](#compatibility-with-tooling) section.) [elm/browser#34](https://github.com/elm/browser/issues/34) [elm/browser#55](https://github.com/elm/browser/issues/55) [elm/browser#64](https://github.com/elm/browser/issues/64)
+- Finally, there’s a bug where clicks on `<a>` elements _without_ `href` still end up producing `LinkClicked` messages, even though such elements shouldn’t be clickable. I’ve fixed that. (But note that this fix doesn’t work during development with elm-watch – see the [Compatibility with tooling](#compatibility-with-tooling) section.) [elm/browser#34](https://github.com/elm/browser/issues/34) [elm/browser#55](https://github.com/elm/browser/issues/55) [elm/browser#64](https://github.com/elm/browser/issues/64)
 
 ### Legacy
 
