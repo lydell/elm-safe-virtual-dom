@@ -258,7 +258,7 @@ There are currently a few ways to install them:
 
 3. An example Nix setup, based on the comprehensive Node.js script above, called [elm-safe-vdom-nix](https://github.com/omnibs/elm-safe-vdom-nix), as well as another Nix solution described in a [Nix plus elm-safe-virtual-dom blog post](https://dev.to/dwayne/nix-pnpm-parcel-lydellelm-safe-virtual-dom-2lp6).
 
-4. The [elm-janitor](https://github.com/elm-janitor/) project has merged the [pull requests](#the-pull-requests) I’ve made to the upstream Elm packages. You can use their [apply-patches](https://github.com/elm-janitor/apply-patches) script to install them (not just my forks, but fixes to other `elm/*` packages as well). Or use whatever other way there is to install elm-janitor fixes.
+4. The [elm-janitor](https://github.com/elm-janitor/) project has merged the [pull requests](#the-pull-requests) I’ve made to the upstream Elm packages. However, I have made more fixes since that, so elm-janitor is a bit outdated. You can use their [apply-patches](https://github.com/elm-janitor/apply-patches) script to install them (not just my forks, but fixes to other `elm/*` packages as well). Or use whatever other way there is to install elm-janitor fixes.
 
 I’m also collaborating with the [Lamdera Compiler](https://github.com/lamdera/compiler/). We’re experimenting with installing my forks automatically when using the Lamdera Compiler! Note that the Lamdera Compiler is open source and can be used for vanilla Elm apps, not just Lamdera apps. If this effort pans out, it’ll be by far the easiest way to install, since all you need to do is replace your `elm make` command with `lamdera make`.
 
