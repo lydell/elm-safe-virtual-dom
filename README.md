@@ -204,11 +204,7 @@ Without the two pull requests mentioned above, the following caveats apply (read
 
 <summary>Lamdera</summary>
 
-TL;DR: To test your Lamdera app with my forks _locally,_ you need to compile Lamdera yourself with [pull request #40](https://github.com/lamdera/compiler/pull/40). **Note:** This only applies if you _actually_ use Lamdera. Not if you just use Lamdera as an alternative Elm compiler, like elm-pages does.
-
-Lamdera copies some functions from elm/virtual-dom, to make modifications to them. My fork of elm/virtual-dom also changes those functions. The pull request mentioned above copies those changes, and supports both the original version and my fork. It also adds `data-elm` to an element that `lamdera live` expects to disappear when Elm initializes.
-
-For Lamdera in production, follow [pull request #65](https://github.com/lamdera/compiler/pull/65).
+Since [Lamdera 1.5.0](https://dashboard.lamdera.app/releases/v1-5-0), Lamdera ships with my forks by default! Both actual Lamdera apps, and projects using the Lamdera Compiler for regular Elm apps, get all my fixes out of the box.
 
 </details>
 
@@ -280,7 +276,7 @@ If you take a look in your `ELM_HOME`, you’ll see folders for every Elm packag
 
 What happens if you edit a file in there? Well … not much. Because of caching. But if you bust the cache – then you can make any changes you like. There are two things you need to remove after each edit:
 
-1. Each package in `ELM_HOME` contains an `artifacts.dat` file (or `artifacts.x.dat` if you use Lamdera). This file isn’t downloaded, it’s created by the Elm compiler when compiling your project.
+1. Each package in `ELM_HOME` contains an `artifacts.dat` file (or `artifacts.*.dat` if you use Lamdera). This file isn’t downloaded, it’s created by the Elm compiler when compiling your project.
 2. The local `elm-stuff/` folder in your project.
 
 Something to keep in mind when making changes in the default `ELM_HOME` location (`~/.elm/`), is that it affects _all_ your Elm projects on your computer. This means that if you mess something up, you mess up _all_ your projects. On the other hand, if you want my forks in all your projects, that can also be convenient. If you mess things up badly, you can just delete `ELM_HOME` and have the Elm compiler download everything from scratch.
